@@ -10,6 +10,9 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import views.html.index;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -37,4 +40,33 @@ public class Application extends Controller {
         );
         return resultPromise;
     }
+
+    public Result build(String id)  {
+        String results = "";
+        try {
+            Process proc = Runtime.getRuntime().exec("docker build -t repose_img_1 .");
+            BufferedReader stdInput = new BufferedReader(new
+                    InputStreamReader(proc.getInputStream()));
+
+            BufferedReader stdError = new BufferedReader(new
+                    InputStreamReader(proc.getErrorStream()));
+
+            // read the output from the command
+            System.out.println("Here is the standard output of the command:\n");
+            String s = null;
+            while ((s = stdInput.readLine()) != null) {
+                results += s;
+            }
+
+            // read any errors from the attempted command
+            System.out.println("Here is the standard error of the command (if any):\n");
+            while ((s = stdError.readLine()) != null) {
+                results += "Error: " + s;
+            }
+            return ok(results);
+        } catch (IOException ioe){
+            return internalServerError(results);
+        }
+    }
+
 }

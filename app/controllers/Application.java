@@ -10,9 +10,7 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import views.html.index;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -43,7 +41,43 @@ public class Application extends Controller {
 
     public Result build(String id)  {
         String results = "";
+
+        BufferedWriter output = null;
         try {
+            try{
+                String tempFile = "Dockerfile";
+                //Override the Dockerfile
+                File file = new File(tempFile);
+                output = new BufferedWriter(new FileWriter(file));
+                output.write("# Dockerfile for Repose (www.openrepose.org)\n");
+                output.append("\n");
+                output.append("FROM ubuntu\n");
+                output.append("\n");
+                output.append("MAINTAINER Jenny Vo (jenny.vo@rackspace.com)\n");
+                output.append("\n");
+                output.append("ENV REPOSE_VER "+id+"\n");
+                output.append("RUN apt-get install -y wget\n");
+                output.append("RUN wget -O - http://repo.openrepose.org/debian/pubkey.gpg | apt-key add - && echo \"deb http://repo.openrepose.org/debian stable main\" > /etc/apt/sources.list.d/openrepose.list\n");
+                output.append("RUN apt-get update && apt-get install -y repose-valve=${REPOSE_VER} repose-filter-bundle=${REPOSE_VER} repose-extensions-filter-bundle=${REPOSE_VER}\n");
+                output.append("\n");
+                output.append("# Remove default Repose configuration files\n");
+                output.append("RUN rm /etc/repose/*.cfg.xml\n");
+                output.append("\n");
+                output.append("# Copy our configuration files in.\n");
+                output.append("ADD ./repose_configs/*.cfg.xml /etc/repose/\n");
+                output.append("\n");
+                output.append("# Expose Port 8000 -- Change this to use other ports for Repose\n");
+                output.append("EXPOSE 8000\n");
+                output.append("\n");
+                output.append("# Start Repose\n");
+                output.append("CMD java -jar /usr/share/repose/repose-valve.jar\n");
+                output.close();
+
+            }catch(Exception e){
+                // if any error occurs
+                e.printStackTrace();
+            }
+
             Process proc = Runtime.getRuntime().exec("docker build -t repose_img_1 .");
             BufferedReader stdInput = new BufferedReader(new
                     InputStreamReader(proc.getInputStream()));
@@ -89,9 +123,10 @@ public class Application extends Controller {
             } catch (Exception e1){
                 return internalServerError(results);
             }
-        } catch (IOException ioe){
+        } catch (Exception ioe){
             return internalServerError(results);
         }
+
     }
 
 }

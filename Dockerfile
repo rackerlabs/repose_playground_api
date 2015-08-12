@@ -3,7 +3,8 @@
 FROM ubuntu
 
 MAINTAINER Jenny Vo (jenny.vo@rackspace.com)
-ENV REPOSE_VER 7.1.2.0
+
+ENV REPOSE_VER 7.1.4.0
 RUN apt-get install -y wget
 RUN wget -O - http://repo.openrepose.org/debian/pubkey.gpg | apt-key add - && echo "deb http://repo.openrepose.org/debian stable main" > /etc/apt/sources.list.d/openrepose.list
 RUN apt-get update && apt-get install -y repose-valve=${REPOSE_VER} repose-filter-bundle=${REPOSE_VER} repose-extensions-filter-bundle=${REPOSE_VER}
@@ -19,4 +20,3 @@ EXPOSE 8000
 
 # Start Repose
 CMD java -jar /usr/share/repose/repose-valve.jar
-

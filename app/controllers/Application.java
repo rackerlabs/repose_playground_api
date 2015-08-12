@@ -63,10 +63,36 @@ public class Application extends Controller {
             while ((s = stdError.readLine()) != null) {
                 results += "Error: " + s;
             }
-            return ok(results);
+            //return ok(results);
+            try {
+                Process proc2 = Runtime.getRuntime().exec("docker run -d -p 80:8000 -t repose_img_1");
+                BufferedReader stdInput2 = new BufferedReader(new
+                        InputStreamReader(proc2.getInputStream()));
+
+                BufferedReader stdError2 = new BufferedReader(new
+                        InputStreamReader(proc2.getErrorStream()));
+
+                // read the output from the command
+                System.out.println("Here is the standard output of the command:\n");
+                String s2 = null;
+                while ((s2 = stdInput2.readLine()) != null) {
+                    results += s2;
+                }
+
+                // read any errors from the attempted command
+                System.out.println("Here is the standard error of the command (if any):\n");
+                while ((s2 = stdError2.readLine()) != null) {
+                    results += "Error 2: " + s2;
+                }
+                return ok(results);
+
+            } catch (Exception e1){
+                return internalServerError(results);
+            }
         } catch (IOException ioe){
             return internalServerError(results);
         }
     }
 
 }
+

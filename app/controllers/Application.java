@@ -2,16 +2,30 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.util.JSONPObject;
+import helpers.Helpers;
+import org.json.JSONObject;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import play.libs.F;
 import play.libs.F.Function;
+import play.libs.Json;
 import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
+import play.mvc.BodyParser;
 import play.mvc.Controller;
 import play.mvc.Result;
 import views.html.index;
 
+import javax.tools.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -38,6 +52,99 @@ public class Application extends Controller {
         );
         return resultPromise;
     }
+
+    public F.Promise<Result> componentsByVersion(String id) {
+        F.Promise<Result> resultPromise = WS.url(
+                "https://maven.research.rackspacecloud.com/content/repositories/releases/org/openrepose/filter-bundle/" +
+                        id +
+                        "/filter-bundle-" + id + ".pom").get().map(
+                new Function<WSResponse, Result>() {
+                    @Override
+                    public Result apply(WSResponse wsResponse) throws Throwable {
+                        List<String> componentList = new ArrayList<String>();
+                        ObjectMapper mapper = new ObjectMapper();
+                        Document document = wsResponse.asXml();
+                        NodeList nodeList = document.getElementsByTagName("dependency");
+                        for (int i = 0; i < nodeList.getLength(); i++) {
+                            Node node = nodeList.item(i);
+                            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                                // do something with the current element
+                                for(int j = 0; j < node.getChildNodes().getLength(); j++){
+                                    Node artifactId = node.getChildNodes().item(j);
+                                    if(artifactId.getNodeName() == "artifactId"){
+                                        componentList.add(artifactId.getTextContent());
+                                    }
+                                }
+                            }
+                        }
+                        return ok((JsonNode)mapper.valueToTree(componentList));
+                    }
+                }
+        );
+        return resultPromise;
+    }
+
+    /**
+     * Supported are:
+     * - ip-identity
+     * - uri-normalization
+     * - content-normalization
+     * - header-normalization
+     * - header-identity
+     * - header-id-mapping
+     * - uri-identity
+     * - destination-router
+     * - uri-stripper
+     * @param id
+     * @param componentId
+     * @return
+     */
+    public F.Promise<Result> component(String id, String componentId) {
+        System.out.println(id);
+        System.out.println("https://raw.githubusercontent.com/rackerlabs/repose/repose-" +
+                id +"/repose-aggregator/components/filters/" +
+                componentId + "/src/main/resources/META-INF/schema/config/bindings.xjb");
+        F.Promise<Result> resultPromise = WS.url(
+                "https://raw.githubusercontent.com/rackerlabs/repose/repose-" +
+                        id +"/repose-aggregator/components/filters/" +
+                        componentId + "/src/main/resources/META-INF/schema/config/bindings.xjb").get().flatMap(
+                new Function<WSResponse, F.Promise<Result>>() {
+                    @Override
+                    public F.Promise<Result> apply(WSResponse wsResponse) throws Throwable {
+                        List<String> componentList = new ArrayList<String>();
+                        Document document = wsResponse.asXml();
+                        NodeList nodeList = document.getElementsByTagName("bindings");
+                        String schemaLocation = "https://raw.githubusercontent.com/rackerlabs/repose/repose-" +
+                                id + "/repose-aggregator/components/filters/" + componentId +
+                                "/src/main/resources/META-INF/schema/config/" + nodeList.
+                                item(0).getAttributes().
+                                getNamedItem("schemaLocation").getTextContent();
+
+                        return WS.url(
+                                "https://raw.githubusercontent.com/rackerlabs/repose/repose-" +
+                                        id + "/repose-aggregator/components/filters/" + componentId +
+                                        "/src/main/resources/META-INF/schema/config/" + schemaLocation).get().map(
+                                new Function<WSResponse, Result>() {
+                                    @Override
+                                    public Result apply(WSResponse innerWsResponse) throws Throwable {
+                                        JSONObject parentJson = new JSONObject();
+                                        List<String> componentList = new ArrayList<String>();
+                                        ObjectMapper mapper = new ObjectMapper();
+
+                                        JSONObject object = Helpers.generateJSONTree(parentJson,
+                                                innerWsResponse.asXml());
+                                        ObjectNode result = (ObjectNode)Json.parse(object.toString());
+                                        return ok(result);
+                                    }
+                                }
+                        );
+                    }
+                }
+        );
+        return resultPromise;
+    }
+
+
 
     public Result build(String id)  {
         String results = "";

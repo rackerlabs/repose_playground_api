@@ -12,6 +12,14 @@ libraryDependencies ++= Seq(
   javaWs
 )
 
+libraryDependencies += "junit" % "junit" % "4.11"
+libraryDependencies += "org.json" % "json" % "20090211"
+
+
 // Play provides two styles of routers, one expects its actions to be injected, the
 // other, legacy style, accesses its actions statically.
 routesGenerator := InjectedRoutesGenerator
+
+resolvers += "Repose OSS Snapshots" at "https://maven.research.rackspacecloud.com/content/repositories/releases"
+
+fork in run := true

@@ -7,6 +7,9 @@ create table user (
   id                        bigint not null,
   username                  varchar(255) not null,
   sha_password              varbinary(64) not null,
+  token                     varchar(255) not null,
+  tenant                    varchar(255),
+  expire_date               timestamp not null,
   constraint uq_user_username unique (username),
   constraint pk_user primary key (id))
 ;

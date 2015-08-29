@@ -1,6 +1,7 @@
 package models;
 
 import com.avaje.ebean.Model;
+import org.joda.time.DateTime;
 import play.data.validation.Constraints;
 
 import javax.persistence.Entity;
@@ -27,12 +28,33 @@ public class User extends Model {
     @Column(length = 64, nullable = false)
     private byte[] shaPassword;
 
+    @Column(nullable = false)
+    public String token;
+
+    @Column(nullable = true)
+    public String tenant;
+
+    @Column(nullable = false)
+    public DateTime expireDate;
+
     public void setPassword(String password) {
         this.shaPassword = getSha512(password);
     }
 
     public void setUsername(String username) {
         this.username = username.toLowerCase();
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public void setExpireDate(DateTime expireDate){
+        this.expireDate = expireDate;
+    }
+
+    public void setTenant(String tenant) {
+        this.tenant = tenant;
     }
 
     public static final Finder<Long, User> find = new Finder<Long, User>(
@@ -51,6 +73,18 @@ public class User extends Model {
                 .where()
                 .eq("username", username.toLowerCase())
                 .findUnique();
+    }
+
+    public static User findByToken(String token) {
+        return find
+                .where()
+                .eq("token", token)
+                .findUnique();
+    }
+
+    public static boolean isValid(String token){
+        User user = findByToken(token);
+        return user != null && user.expireDate.isAfterNow();
     }
 
     public static byte[] getSha512(String value) {

@@ -95,10 +95,6 @@ public class Application extends Controller {
      * @return
      */
     public F.Promise<Result> component(String id, String componentId) {
-        System.out.println(id);
-        System.out.println("https://raw.githubusercontent.com/rackerlabs/repose/repose-" +
-                id +"/repose-aggregator/components/filters/" +
-                componentId + "/src/main/resources/META-INF/schema/config/bindings.xjb");
         F.Promise<Result> resultPromise = WS.url(
                 "https://raw.githubusercontent.com/rackerlabs/repose/repose-" +
                         id +"/repose-aggregator/components/filters/" +

@@ -18,7 +18,6 @@ import play.libs.ws.WSResponse;
 import play.mvc.BodyParser;
 import play.mvc.Controller;
 import play.mvc.Result;
-import views.html.index;
 
 import javax.tools.*;
 import java.io.*;
@@ -30,10 +29,6 @@ import java.util.Iterator;
 import java.util.List;
 
 public class Application extends Controller {
-
-    public Result index() {
-        return ok(index.render("Your new application is ready."));
-    }
 
     public F.Promise<Result> versions() {
         F.Promise<Result> resultPromise = WS.url("https://api.github.com/repos/rackerlabs/repose/tags").get().map(

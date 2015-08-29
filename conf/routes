@@ -12,5 +12,8 @@ POST       /versions/:id                                controllers.Application.
 GET        /versions/:id/components                     controllers.Application.componentsByVersion(id)
 GET        /versions/:id/components/:componentId        controllers.Application.component(id, componentId)
 
+# Account
+POST       /app/auth                              controllers.Login.index()
+
 # Map static resources from the /public folder to the /assets URL path
 GET        /assets/*file        controllers.Assets.versioned(path="/public", file: Asset)

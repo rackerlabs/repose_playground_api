@@ -3,7 +3,6 @@
 # ~~~~
 
 # Home page
-GET        /                                            controllers.Application.index()
 GET        /versions                                    controllers.Application.versions()
 POST       /versions/:id                                controllers.Application.build(id)
 
@@ -11,6 +10,10 @@ POST       /versions/:id                                controllers.Application.
 # Components
 GET        /versions/:id/components                     controllers.Application.componentsByVersion(id)
 GET        /versions/:id/components/:componentId        controllers.Application.component(id, componentId)
+
+# Account
+POST       /app/auth                                    controllers.Login.auth()
+GET        /app/users/me                                controllers.Login.me()
 
 # Map static resources from the /public folder to the /assets URL path
 GET        /assets/*file        controllers.Assets.versioned(path="/public", file: Asset)

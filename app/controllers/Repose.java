@@ -2,13 +2,9 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import models.*;
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.DateTimeFormatterBuilder;
-import org.joda.time.format.ISODateTimeFormat;
+import models.Region;
+import models.User;
 import play.Logger;
-import play.data.Form;
 import play.data.validation.Constraints;
 import play.libs.F;
 import play.libs.F.Function;
@@ -27,16 +23,17 @@ public class Repose extends Controller {
 
     public Result list() {
         String token = request().getHeader("Token");
-        Logger.debug("Check the user for " + token);
-        Logger.debug("The return user is " + User.findByToken(token));
+        Logger.info("Check the user for " + token);
+        Logger.info("The return user is " + User.findByToken(token));
         //check if expired
         if(!User.isValid(token))
             return unauthorized();
         else
         {
-            //get servers list from service catalog
-            //get all servers
-            //filter only those that have metadata repose-playground
+            //get carina info from service catalog (not there yet)
+            //get the cluster name "ReposeTrial"
+            //download credentials
+            //get docker instances and return all containers named repose-playground
             User user = User.findByToken(token);
             F.Promise<Result> resultPromise = WS.url(
                     "https://dfw.servers.api.rackspacecloud.com/v2/" + user.tenant + "/servers/detail")
@@ -45,17 +42,17 @@ public class Repose extends Controller {
                             new Function<WSResponse, Result>() {
                                 @Override
                                 public Result apply(WSResponse wsResponse) throws Throwable {
-                                    Logger.debug("response from servers: " +
+                                    Logger.info("response from servers: " +
                                             wsResponse.getStatus() + " " + wsResponse.getStatusText());
 
-                                    Logger.debug("response body: " + wsResponse.getBody());
+                                    Logger.info("response body: " + wsResponse.getBody());
 
                                     switch (wsResponse.getStatus()) {
                                         case 200:
                                             //save the servers
                                             List<JsonNode> serverList = new ArrayList<JsonNode>();
                                             JsonNode serverData = wsResponse.asJson();
-                                            Logger.debug("show servers: " + serverData);
+                                            Logger.info("show servers: " + serverData);
                                             //filter out only those with repose-playground metadata
                                             for(final JsonNode server : serverData.get("servers")) {
                                                 if(server.get("metadata").has("ReposeLabel") &&
@@ -66,7 +63,7 @@ public class Repose extends Controller {
                                             }
                                             return ok(Json.toJson(serverList));
                                         case 401:
-                                            Logger.debug("Unauthenticated");
+                                            Logger.info("Unauthenticated");
                                             return unauthorized(wsResponse.getBody());
                                         default:
                                             return internalServerError(

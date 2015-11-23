@@ -2,7 +2,7 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-# Home page
+# Repose versions page
 GET        /versions                                    controllers.Application.versions()
 POST       /versions/:id                                controllers.Application.build(id)
 
@@ -12,11 +12,11 @@ GET        /versions/:id/components                     controllers.Application.
 GET        /versions/:id/components/:componentId        controllers.Application.component(id, componentId)
 
 # Account
-POST       /app/auth                                    controllers.Login.auth()
-GET        /app/users/me                                controllers.Login.me()
+POST       /app/auth                                    controllers.Login.create()
+GET        /app/auth                                    controllers.Login.index()
 
 # Reposes
-GET        /app/repose/list                                 controllers.Repose.list()
+GET        /app/repose/list                             controllers.Repose.list()
 
 # Map static resources from the /public folder to the /assets URL path
 GET        /assets/*file        controllers.Assets.versioned(path="/public", file: Asset)

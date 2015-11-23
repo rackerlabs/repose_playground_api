@@ -35,7 +35,7 @@ import java.util.List;
 
 public class Login extends Controller {
 
-    public Result me() {
+    public Result index() {
         String token = request().getHeader("Token");
         Logger.debug("Check the user for " + token);
         Logger.debug("The return user is " + User.findByToken(token));
@@ -50,7 +50,7 @@ public class Login extends Controller {
         }
     }
 
-    public Result auth() {
+    public Result create() {
         Logger.debug("In login controller.  Get login form");
         Form<LoginForm> loginForm= Form.form(LoginForm.class).bindFromRequest();
         Logger.debug("log binding from request");
@@ -116,7 +116,7 @@ public class Login extends Controller {
             );
             return resultPromise.get(30000);
         } else {
-            return ok(buildJsonResponse("success", user.username));
+            return ok(Json.toJson(user));
 
         }
 

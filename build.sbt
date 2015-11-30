@@ -22,5 +22,6 @@ routesGenerator := InjectedRoutesGenerator
 
 resolvers += "Repose OSS Snapshots" at "https://maven.research.rackspacecloud.com/content/repositories/releases"
 
-fork in run := true
-offline := true
+// fork in run := true
+fork in run := false
+//offline := true

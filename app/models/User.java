@@ -4,9 +4,7 @@ import com.avaje.ebean.Model;
 import org.joda.time.DateTime;
 import play.data.validation.Constraints;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Column;
+import javax.persistence.*;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -97,5 +95,14 @@ public class User extends Model {
         catch (UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String toString(){
+        return "User: " +
+                "id => " + id +
+                ", username => " + username +
+                ", token => " + token +
+                ", tenant => " + tenant +
+                ", expires => " + expireDate;
     }
 }

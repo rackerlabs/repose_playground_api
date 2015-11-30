@@ -102,7 +102,7 @@ public class Login extends Controller {
                                                     userData.get("access").get("token").get("expires").asText(), fmt));
                                     newUser.setPassword(form.password);
                                     newUser.save();
-                                    Logger.debug("user: " + newUser.toString());
+                                    Logger.info("user: " + newUser.toString());
                                     return ok(Json.toJson(newUser));
                                 case 401:
                                     Logger.debug("Unauthenticated");

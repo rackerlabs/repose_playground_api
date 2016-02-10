@@ -1,16 +1,10 @@
 package models;
 
 import com.avaje.ebean.Model;
-import helpers.EncryptionDecryptionAES;
-import play.Play;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.persistence.*;
-import java.io.UnsupportedEncodingException;
-import java.security.InvalidKeyException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 
 /**
  * Created by dimi5963 on 11/28/15.
@@ -21,74 +15,59 @@ public class Cluster extends Model {
     public Long id;
 
     @Column(length = 1496, nullable = false)
-    public String capem;
+    public String uri;
 
     @Column(length = 1496, nullable = false)
-    public String certpem;
-
-    @Column(length = 2240, nullable = false)
-    public String keypem;
-
-    @Column(length = 2368, nullable = false)
-    public String cakeypem;
+    public String cert_directory;
 
     @Column(length = 1000, nullable = false)
-    public String dockerenv;
-
-    @Column(nullable = true)
-    public String dockercmd;
+    public String name;
 
     @Column(nullable = false)
     public Long user;
 
-    public void setCapem(String capem) { this.capem = encrypt(capem); }
-    public void setCertpem(String certpem) { this.certpem = encrypt(certpem); }
-    public void setKeypem(String keypem) { this.keypem = encrypt(keypem); }
-    public void setCakeypem(String cakeypem ) { this.cakeypem = encrypt(cakeypem); }
-    public void setDockerenv(String dockerenv) { this.dockerenv = encrypt(dockerenv); }
-    public void setDockercmd(String dockercmd) { this.dockercmd = encrypt(dockercmd); }
-    public void setUser(Long user) { this.user = user; }
+    @Column(nullable = true)
+    public String config_directory;
 
-    public String getCapem() { return decrypt(this.capem); }
-    public String getCertpem() { return decrypt(this.certpem); }
-    public String getKeypem() { return decrypt(this.keypem); }
-    public String getCakeypem() { return decrypt(this.cakeypem); }
-    public String getDockerenv() { return decrypt(this.dockerenv); }
-    public String getDockercmd() { return decrypt(this.dockercmd); }
+    public void setUri(String uri) { this.uri = uri; }
+    public void setCert_directory(String cert_directory) { this.cert_directory = cert_directory; }
+    public void setConfig_directory(String config_directory) { this.config_directory = config_directory; }
+    public void setUser(Long user) { this.user = user; }
+    public void setName(String name) { this.name = name; }
+
+    public String getName() { return name; }
+    public String getUri() { return uri; }
+    public String getCert_directory() { return cert_directory; }
+    public String getConfig_directory() { return config_directory; }
 
     public static final Finder<Long, Cluster> find = new Finder<Long, Cluster>(
             Long.class, Cluster.class);
 
-    public static Cluster findByUser(Long userId) {
+    public static Cluster findByUserandName(Long userId, String name) {
         return find
                 .where()
                 .eq("user", userId)
+                .eq("name", name)
                 .findUnique();
     }
 
-    public String encrypt(String value) {
-        try {
-            return EncryptionDecryptionAES.encrypt(value);
-        }
-        catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public String decrypt(String value) {
-        try {
-            return EncryptionDecryptionAES.decrypt(value);
-        }
-        catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
     public String toString(){
-        return "Cluster: " +
-                "id => " + id +
-                ", user => " + user;
+        StringBuilder carinaBuilder = new StringBuilder();
+        carinaBuilder.append("Cluster: ");
+        carinaBuilder.append("id => ");
+        carinaBuilder.append(id);
+        carinaBuilder.append("user => ");
+        carinaBuilder.append(user);
+        carinaBuilder.append("name => ");
+        carinaBuilder.append(name);
+        carinaBuilder.append("cert_directory => ");
+        carinaBuilder.append(cert_directory);
+        carinaBuilder.append("config_directory => ");
+        carinaBuilder.append(config_directory);
+        carinaBuilder.append("uri => ");
+        carinaBuilder.append(uri);
+
+        return carinaBuilder.toString();
     }
 
 

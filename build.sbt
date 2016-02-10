@@ -14,6 +14,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "junit" % "junit" % "4.11"
 libraryDependencies += "org.json" % "json" % "20090211"
+libraryDependencies += "com.spotify" % "docker-client" % "3.5.1"
 
 
 // Play provides two styles of routers, one expects its actions to be injected, the

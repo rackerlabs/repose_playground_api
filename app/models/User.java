@@ -2,9 +2,12 @@ package models;
 
 import com.avaje.ebean.Model;
 import org.joda.time.DateTime;
+import play.Logger;
 import play.data.validation.Constraints;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,6 +35,9 @@ public class User extends Model {
     @Column(nullable = true)
     public String tenant;
 
+    @Column(nullable = true)
+    public String userid;
+
     @Column(nullable = false)
     public DateTime expireDate;
 
@@ -41,6 +47,10 @@ public class User extends Model {
 
     public void setUsername(String username) {
         this.username = username.toLowerCase();
+    }
+
+    public void setUserid(String userid) {
+        this.userid = userid.toLowerCase();
     }
 
     public void setToken(String token) {
@@ -57,6 +67,32 @@ public class User extends Model {
 
     public static final Finder<Long, User> find = new Finder<Long, User>(
             Long.class, User.class);
+
+    public static User findByNameAndPasswordCurrent(String username, String password) {
+        Logger.info("findByNameAndPasswordCurrent: " + username + ":" + password);
+        return find
+                .where()
+                .eq("username", username.toLowerCase())
+                .eq("shaPassword", getSha512(password))
+                .gt("expireDate", DateTime.now())
+                .findUnique();
+    }
+
+    public static User findByNameCurrent(String username) {
+        return find
+                .where()
+                .eq("username", username.toLowerCase())
+                .gt("expireDate", DateTime.now())
+                .findUnique();
+    }
+
+    public static User findByTokenCurrent(String token) {
+        return find
+                .where()
+                .eq("token", token)
+                .gt("expireDate", DateTime.now())
+                .findUnique();
+    }
 
     public static User findByNameAndPassword(String username, String password) {
         return find
@@ -87,6 +123,7 @@ public class User extends Model {
 
     public static byte[] getSha512(String value) {
         try {
+            Logger.info("sha-512: " + value);
             return MessageDigest.getInstance("SHA-512").digest(value.getBytes("UTF-8"));
         }
         catch (NoSuchAlgorithmException e) {

@@ -2,38 +2,60 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.util.JSONPObject;
+import com.google.common.collect.ImmutableSet;
+import com.spotify.docker.client.*;
+import com.spotify.docker.client.messages.*;
+import exceptions.InternalServerException;
 import helpers.Helpers;
+import models.Carina;
+import models.Cluster;
+import models.Filter;
+import models.User;
+import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import play.Logger;
 import play.libs.F;
 import play.libs.F.Function;
 import play.libs.Json;
 import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
-import play.mvc.BodyParser;
 import play.mvc.Controller;
 import play.mvc.Result;
 
-import javax.tools.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.*;
+import java.net.URI;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.nio.file.StandardCopyOption;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Application extends Controller {
 
     public F.Promise<Result> versions() {
-        F.Promise<Result> resultPromise = WS.url("https://api.github.com/repos/rackerlabs/repose/tags").get().map(
+        F.Promise<Result> resultPromise = WS.url("https://api.github.com/repos/rackerlabs/repose/tags")
+                .setHeader("Authorization", "token " + play.Play.application().configuration().getString("oauth.token")).get().map(
                 new Function<WSResponse, Result>(){
                     public Result apply(WSResponse response){
+                        Logger.info(response.getAllHeaders().toString());
                         Iterator<JsonNode> result = response.asJson().elements();
                         ObjectMapper mapper = new ObjectMapper();
                         List<String> tagList = new ArrayList<String>();
@@ -49,33 +71,74 @@ public class Application extends Controller {
     }
 
     public F.Promise<Result> componentsByVersion(String id) {
-        F.Promise<Result> resultPromise = WS.url(
-                "https://maven.research.rackspacecloud.com/content/repositories/releases/org/openrepose/filter-bundle/" +
-                        id +
-                        "/filter-bundle-" + id + ".pom").get().map(
-                new Function<WSResponse, Result>() {
-                    @Override
-                    public Result apply(WSResponse wsResponse) throws Throwable {
-                        List<String> componentList = new ArrayList<String>();
-                        ObjectMapper mapper = new ObjectMapper();
-                        Document document = wsResponse.asXml();
-                        NodeList nodeList = document.getElementsByTagName("dependency");
-                        for (int i = 0; i < nodeList.getLength(); i++) {
-                            Node node = nodeList.item(i);
-                            if (node.getNodeType() == Node.ELEMENT_NODE) {
-                                // do something with the current element
-                                for(int j = 0; j < node.getChildNodes().getLength(); j++){
-                                    Node artifactId = node.getChildNodes().item(j);
-                                    if(artifactId.getNodeName() == "artifactId"){
-                                        componentList.add(artifactId.getTextContent());
+        Logger.info("Version id " + id.split(Pattern.quote("."))[0]);
+        F.Promise<Result> resultPromise = null;
+        if (Integer.parseInt(id.split(Pattern.quote("."))[0]) >= 7) {
+            resultPromise = WS.url(
+                    "https://maven.research.rackspacecloud.com/content/repositories/releases/org/openrepose/filter-bundle/" +
+                            id +
+                            "/filter-bundle-" + id + ".pom")
+                    .get().map(
+                    new Function<WSResponse, Result>() {
+                        @Override
+                        public Result apply(WSResponse wsResponse) throws Throwable {
+                            List<String> componentList = new ArrayList<String>();
+                            ObjectMapper mapper = new ObjectMapper();
+                            Document document = wsResponse.asXml();
+                            NodeList nodeList = document.getElementsByTagName("dependency");
+                            for (int i = 0; i < nodeList.getLength(); i++) {
+                                Node node = nodeList.item(i);
+                                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                                    // do something with the current element
+                                    for (int j = 0; j < node.getChildNodes().getLength(); j++) {
+                                        Node artifactId = node.getChildNodes().item(j);
+                                        if (artifactId.getNodeName() == "artifactId") {
+                                            componentList.add(artifactId.getTextContent());
+                                        }
                                     }
                                 }
                             }
+                            return ok((JsonNode) mapper.valueToTree(componentList));
                         }
-                        return ok((JsonNode)mapper.valueToTree(componentList));
                     }
-                }
-        );
+            );
+        } else {
+            resultPromise = WS.url(
+                    "https://maven.research.rackspacecloud.com/content/repositories/releases/com/rackspace/papi/components/filter-bundle/" +
+                            id +
+                            "/filter-bundle-" + id + ".pom").get().map(
+                    new Function<WSResponse, Result>() {
+                        @Override
+                        public Result apply(WSResponse wsResponse) throws Throwable {
+                            switch(wsResponse.getStatus()){
+                                case 200:
+                                    List<String> componentList = new ArrayList<String>();
+                                    ObjectMapper mapper = new ObjectMapper();
+                                    Document document = wsResponse.asXml();
+                                    NodeList nodeList = document.getElementsByTagName("dependency");
+                                    for (int i = 0; i < nodeList.getLength(); i++) {
+                                        Node node = nodeList.item(i);
+                                        if (node.getNodeType() == Node.ELEMENT_NODE) {
+                                            // do something with the current element
+                                            for (int j = 0; j < node.getChildNodes().getLength(); j++) {
+                                                Node artifactId = node.getChildNodes().item(j);
+                                                if (artifactId.getNodeName() == "artifactId") {
+                                                    componentList.add(artifactId.getTextContent());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    return ok((JsonNode) mapper.valueToTree(componentList));
+                                case 404:
+                                    return notFound();
+                                default:
+                                    return notFound();
+                            }
+
+                        }
+                    }
+            );
+        }
         return resultPromise;
     }
 
@@ -122,7 +185,7 @@ public class Application extends Controller {
                                         List<String> componentList = new ArrayList<String>();
                                         ObjectMapper mapper = new ObjectMapper();
 
-                                        JSONObject object = Helpers.generateJSONTree(parentJson,
+                                        JSONObject object = Helpers.generateJSONTree(componentId, parentJson,
                                                 innerWsResponse.asXml());
                                         ObjectNode result = (ObjectNode)Json.parse(object.toString());
                                         return ok(result);
@@ -135,97 +198,795 @@ public class Application extends Controller {
         return resultPromise;
     }
 
-
-
+    /**
+     * Build repose instance.
+     * @param id version id
+     * @return
+     */
     public Result build(String id)  {
-        String results = "";
+        /**
+         * We build out the repose instance here.
+         * 1. we convert json payload to proper xmls
+         * 2. we create container, log4j, and system-model appropriately
+         * 3. we get the cluster for the user
+         * 4. we create a repose instance
+         * 5. we create a repose origin service instance
+         */
+        Logger.trace("Let's create a repose instance.");
+        Logger.info(play.Play.application().path().getAbsolutePath());
 
-        BufferedWriter output = null;
-        try {
-            try{
-                String tempFile = "Dockerfile";
-                //Override the Dockerfile
-                File file = new File(tempFile);
-                output = new BufferedWriter(new FileWriter(file));
-                output.write("# Dockerfile for Repose (www.openrepose.org)\n");
-                output.append("\n");
-                output.append("FROM ubuntu\n");
-                output.append("\n");
-                output.append("MAINTAINER Jenny Vo (jenny.vo@rackspace.com)\n");
-                output.append("\n");
-                output.append("ENV REPOSE_VER "+id+"\n");
-                output.append("RUN apt-get install -y wget\n");
-                output.append("RUN wget -O - http://repo.openrepose.org/debian/pubkey.gpg | apt-key add - && echo \"deb http://repo.openrepose.org/debian stable main\" > /etc/apt/sources.list.d/openrepose.list\n");
-                output.append("RUN apt-get update && apt-get install -y repose-valve=${REPOSE_VER} repose-filter-bundle=${REPOSE_VER} repose-extensions-filter-bundle=${REPOSE_VER}\n");
-                output.append("\n");
-                output.append("# Remove default Repose configuration files\n");
-                output.append("RUN rm /etc/repose/*.cfg.xml\n");
-                output.append("\n");
-                output.append("# Copy our configuration files in.\n");
-                output.append("ADD ./repose_configs/*.cfg.xml /etc/repose/\n");
-                output.append("\n");
-                output.append("# Expose Port 8000 -- Change this to use other ports for Repose\n");
-                output.append("EXPOSE 8000\n");
-                output.append("\n");
-                output.append("# Start Repose\n");
-                output.append("CMD java -jar /usr/share/repose/repose-valve.jar\n");
-                output.close();
+        String token = request().getHeader("Token");
 
-            }catch(Exception e){
-                // if any error occurs
-                e.printStackTrace();
-            }
+        User user = User.findByToken(token);
 
-            Process proc = Runtime.getRuntime().exec("docker build -t repose_img_1 .");
-            BufferedReader stdInput = new BufferedReader(new
-                    InputStreamReader(proc.getInputStream()));
+        if(user != null) {
+            JsonNode jsonRequest = request().body().asJson();
+            Logger.info(request().body().asJson().toString());
 
-            BufferedReader stdError = new BufferedReader(new
-                    InputStreamReader(proc.getErrorStream()));
+            Map<String, String> filters = getFilterXmls(jsonRequest);
+            Logger.info("Number of filters: " + filters.size());
 
-            // read the output from the command
-            System.out.println("Here is the standard output of the command:\n");
-            String s = null;
-            while ((s = stdInput.readLine()) != null) {
-                results += s;
-            }
+            int majorVersion = Integer.parseInt(id.split(Pattern.quote("."))[0]);
 
-            // read any errors from the attempted command
-            System.out.println("Here is the standard error of the command (if any):\n");
-            while ((s = stdError.readLine()) != null) {
-                results += "Error: " + s;
-            }
-            //return ok(results);
+            //create system model configuration with the specified filters (right now order doesn't matter)
+            Logger.info("Create system-model xml.  Hardcode for now, expose more features later :)");
+            filters.put("system-model.cfg.xml", generateSystemModelXml(filters.keySet(), majorVersion, user, id));
+
+            //create containers configuration
+            Logger.info("Create repose-container xml.  Hardcode for now, expose more features later :)");
+            filters.put("container.cfg.xml", generateContainerXml(majorVersion));
+
+            //create logging configuration
+            Logger.info("If version < 7, use log4j.properties.  Else, use log4j2.xml");
+            if (majorVersion >= 7)
+                filters.put("log4j2.xml", generateLoggingXml(majorVersion));
+            else
+                filters.put("log4j.properties", generateLoggingXml(majorVersion));
+
+            filters.forEach((name, filter) ->
+                            Logger.info("Filter: " + name + " and xml: " + filter)
+            );
+
+            //spin up a new container in admin cluster
+            //copy over creds for tenant
+            //copy over xmls
+            //use new container to spin up repose container
+            Logger.info("Log into user account and return " +
+                    play.Play.application().configuration().getString("user.cluster.name") + " cluster");
+
+            Logger.info("Create new docker instance");
             try {
-                Process proc2 = Runtime.getRuntime().exec("docker run -d -p 80:8000 -t repose_img_1");
-                BufferedReader stdInput2 = new BufferedReader(new
-                        InputStreamReader(proc2.getInputStream()));
-
-                BufferedReader stdError2 = new BufferedReader(new
-                        InputStreamReader(proc2.getErrorStream()));
-
-                // read the output from the command
-                System.out.println("Here is the standard output of the command:\n");
-                String s2 = null;
-                while ((s2 = stdInput2.readLine()) != null) {
-                    results += s2;
-                }
-
-                // read any errors from the attempted command
-                System.out.println("Here is the standard error of the command (if any):\n");
-                while ((s2 = stdError2.readLine()) != null) {
-                    results += "Error 2: " + s2;
-                }
-                return ok(results);
-
-            } catch (Exception e1){
-                return internalServerError(results);
+                createOriginContainer(user, id);
+                createReposeContainer(user, filters, id);
+                return ok(Json.parse("{\"message\": \"success\"}"));
+            } catch (InternalServerException e) {
+                return internalServerError(e.getLocalizedMessage());
             }
-        } catch (Exception ioe){
-            return internalServerError(results);
+        } else {
+            return unauthorized();
         }
+
 
     }
 
+    private Element addAppenders(Document document, String appender, Map<String, String> attributes ){
+        Element rollingFileAppender = document.createElement(appender);
+        attributes.forEach((attrName, attrValue) ->
+                rollingFileAppender.setAttribute(attrName, attrValue)
+        );
+        Element patternLayout = document.createElement("PatternLayout");
+        patternLayout.setAttribute("pattern", "%d %-4r [%t] %-5p %c - %m%n");
+
+        rollingFileAppender.appendChild(patternLayout);
+
+        Element policies = document.createElement("Policies");
+        rollingFileAppender.appendChild(policies);
+
+
+        Element sizedBasedTriggeringPolicy = document.createElement("SizeBasedTriggeringPolicy");
+        sizedBasedTriggeringPolicy.setAttribute("size", "200 MB");
+        policies.appendChild(sizedBasedTriggeringPolicy);
+
+        Element defaultRolloverStrategy = document.createElement("DefaultRolloverStrategy");
+        defaultRolloverStrategy.setAttribute("max", "2");
+        rollingFileAppender.appendChild(defaultRolloverStrategy);
+
+        return rollingFileAppender;
+
+    }
+
+    private String generateLoggingXml(int majorVersion) {
+        if(majorVersion >= 7) {
+            //log4j2.xml
+            //get new doc builder
+            Document document = null;
+            try {
+                document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+            } catch (ParserConfigurationException e) {
+                e.printStackTrace();
+            }
+            Element rootElement = document.createElement("Configuration");
+            rootElement.setAttribute("monitorInterval", "15");
+            document.appendChild(rootElement);
+
+            Element appenders = document.createElement("Appenders");
+            rootElement.appendChild(appenders);
+
+            Element consoleAppender = document.createElement("Console");
+            consoleAppender.setAttribute("name", "STDOUT");
+            appenders.appendChild(consoleAppender);
+
+            Element patternLayout = document.createElement("PatternLayout");
+            patternLayout.setAttribute("pattern", "%d %-4r [%t] %-5p %c - %m%n");
+            consoleAppender.appendChild(patternLayout);
+
+            appenders.appendChild(addAppenders(document, "RollingFile", new HashMap<String, String>() {
+                {
+                    put("name", "MainRollingFile");
+                    put("fileName", "/var/log/repose/current.log");
+                    put("filePattern", "/var/log/repose/current-%d{yyyy-MM-dd_HHmmss}.log");
+                }
+            }));
+
+            appenders.appendChild(addAppenders(document, "RollingFile", new HashMap<String, String>() {
+                {
+                    put("name", "IntraFilterRollingFile");
+                    put("fileName", "/var/log/repose/intra-filter.log");
+                    put("filePattern", "/var/log/repose/intra-filter-%d{yyyy-MM-dd_HHmmss}.log");
+                }
+            }));
+
+            appenders.appendChild(addAppenders(document, "RollingFile", new HashMap<String, String>() {
+                {
+                    put("name", "HttpRollingFile");
+                    put("fileName", "/var/log/repose/http-debug.log");
+                    put("filePattern", "/var/log/repose/http-debug-%d{yyyy-MM-dd_HHmmss}.log");
+                }
+            }));
+
+            Element errorElement = addAppenders(document, "RollingFile", new HashMap<String, String>() {
+                {
+                    put("name", "ErrorRollingFile");
+                    put("fileName", "/var/log/repose/error.log");
+                    put("filePattern", "/var/log/repose/error-%d{yyyy-MM-dd_HHmmss}.log");
+                }
+            });
+            errorElement.appendChild(addElement(document, "Filters", new HashMap<String, String>(), Optional.of(
+                    addElement(document, "ThresholdFilter", new HashMap<String, String>() {
+                        {
+                            put("level", "ERROR");
+                            put("onMatch", "ACCEPT");
+                        }
+                    }, Optional.<Element>empty())
+            )));
+
+            appenders.appendChild(errorElement);
+
+            Element loggers = document.createElement("Loggers");
+            rootElement.appendChild(loggers);
+
+            Element rootRootElement = addElement(document, "Root", new HashMap<String, String>() {
+                {
+                    put("level", "DEBUG");
+                }
+            }, Optional.of(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "ErrorRollingFile");
+                }
+            }, Optional.<Element>empty())));
+
+            rootRootElement.appendChild(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "MainRollingFile");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(rootRootElement);
+
+            rootElement.appendChild(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "STDOUT");
+                }
+            }, Optional.<Element>empty()));
+
+            rootElement.appendChild(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "MainRollingFile");
+                }
+            }, Optional.<Element>empty()));
+
+            rootElement.appendChild(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "IntraFilterRollingFile");
+                }
+            }, Optional.<Element>empty()));
+
+            rootElement.appendChild(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "HttpRollingFile");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "com.sun.jersey");
+                    put("level", "off");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "net.sf.ehcache");
+                    put("level", "error");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "org.apache");
+                    put("level", "debug");
+                }
+            }, Optional.of(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "HttpRollingFile");
+                }
+            }, Optional.<Element>empty()))));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "org.eclipse.jetty");
+                    put("level", "off");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "org.springframework");
+                    put("level", "debug");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "org.openrepose");
+                    put("level", "debug");
+                }
+            }, Optional.<Element>empty()));
+
+            loggers.appendChild(addElement(document, "Logger", new HashMap<String, String>() {
+                {
+                    put("name", "intrafilter-logging");
+                    put("level", "trace");
+                }
+            }, Optional.of(addElement(document, "AppenderRef", new HashMap<String, String>() {
+                {
+                    put("ref", "IntraFilterRollingFile");
+                }
+            }, Optional.<Element>empty()))));
+            return convertDocumentToString(document);
+        } else {
+            //log4j.properties
+            return "log4j.rootLogger=DEBUG, consoleOut\n" +
+                    "\n" +
+                    "#Jetty Logging Turned Off\n" +
+                    "log4j.logger.org.eclipse.jetty=OFF\n" +
+                    "log4j.logger.com.sun.jersey=OFF\n" +
+                    "log4j.logger.org.springframework=WARN\n" +
+                    "log4j.logger.org.apache=DEBUG\n" +
+                    "log4j.logger.org.openrepose=DEBUG\n" +
+                    "log4j.logger.intrafilter-logging=TRACE\n" +
+                    "\n" +
+                    "# Console\n" +
+                    "log4j.appender.consoleOut=org.apache.log4j.ConsoleAppender\n" +
+                    "log4j.appender.consoleOut.layout=org.apache.log4j.PatternLayout\n" +
+                    "log4j.appender.consoleOut.layout.ConversionPattern=%d %-4r [%t] %-5p %c %x - %m%n";
+        }
+    }
+
+    private Element addElement(Document doc, String name, Map<String, String> attributeList, Optional<Element> nestedElement){
+
+        Element element = doc.createElement(name);
+        attributeList.forEach((attrName, attrValue) ->
+                element.setAttribute(attrName, attrValue)
+        );
+
+        if(nestedElement.isPresent()){
+            element.appendChild(nestedElement.get());
+        }
+
+        return element;
+    }
+
+    private String generateContainerXml(int majorVersion){
+        //get new doc builder
+        Document document = null;
+        try {
+            document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        }
+        Element rootElement = null;
+        if(majorVersion >= 7)
+            rootElement = document.createElementNS("http://docs.openrepose.org/repose/container/v2.0",
+                            "repose-container");
+        else
+            rootElement =
+                    document.createElementNS("http://docs.rackspacecloud.com/repose/container/v2.0",
+                            "repose-container");
+        //root element
+        document.appendChild(rootElement);
+        //add deployment-config
+        Element deploymentConfig = document.createElement("deployment-config");
+        deploymentConfig.setAttribute("connection-timeout", "30000");
+        deploymentConfig.setAttribute("read-timeout", "30000");
+        rootElement.appendChild(deploymentConfig);
+
+        //add deployment-directory
+        Element deploymentDirectory = document.createElement("deployment-directory");
+        deploymentDirectory.setAttribute("auto-clean", "true");
+        deploymentDirectory.setTextContent("/var/repose");
+        deploymentConfig.appendChild(deploymentDirectory);
+
+        //add artifact-directory
+        Element artifactDirectory = document.createElement("artifact-directory");
+        artifactDirectory.setAttribute("check-interval", "15000");
+        artifactDirectory.setTextContent("/usr/share/repose/filters");
+        deploymentConfig.appendChild(artifactDirectory);
+
+
+        //add logging-configuration
+        Element loggingConfiguration = document.createElement("logging-configuration");
+        if(majorVersion >= 7)
+            loggingConfiguration.setAttribute("href", "file:///etc/repose/log4j2.xml");
+        else
+            loggingConfiguration.setAttribute("href", "log4j.properties");
+        deploymentConfig.appendChild(loggingConfiguration);
+
+        return convertDocumentToString(document);
+
+    }
+
+    private String generateSystemModelXml(Set<String> filterNames, int majorVersion, User user, String versionId){
+        //get new doc builder
+        Document document = null;
+        try {
+            document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        }
+        Element rootElement = null;
+        if(majorVersion >= 7)
+            rootElement = document.createElementNS("http://docs.openrepose.org/repose/system-model/v2.0",
+                    "system-model");
+        else
+            rootElement =
+                    document.createElementNS("http://docs.rackspacecloud.com/repose/system-model/v2.0",
+                            "system-model");
+        //root element
+        document.appendChild(rootElement);
+        //add repose-cluster
+        Element reposeCluster = document.createElement("repose-cluster");
+        reposeCluster.setAttribute("id", "try-it-now");
+        rootElement.appendChild(reposeCluster);
+
+        //add nodes.  Right now there's just one.  Support for multiple is next
+        Element reposeClusterNodes = document.createElement("nodes");
+        reposeCluster.appendChild(reposeClusterNodes);
+        Element reposeClusterNode = document.createElement("node");
+        reposeClusterNode.setAttribute("id", "try-it-now-1");
+        reposeClusterNode.setAttribute("hostname", "localhost");
+        reposeClusterNode.setAttribute("http-port", "8080");
+        reposeClusterNodes.appendChild(reposeClusterNode);
+
+        //add filters
+        Element filters = document.createElement("filters");
+        reposeCluster.appendChild(filters);
+        for(String filter: filterNames) {
+            Element filterElement = document.createElement("filter");
+            //split out the name.cfg.xml and put in the name
+            filterElement.setAttribute("name", filter.split(Pattern.quote("."))[0]);
+            filterElement.setAttribute("configuration", filter);
+            filters.appendChild(filterElement);
+        }
+
+        //add destination.  Right now there's just one.  Support for multiple is going to be there someday
+        Element destinations = document.createElement("destinations");
+        reposeCluster.appendChild(destinations);
+        Element endpoint = document.createElement("endpoint");
+        endpoint.setAttribute("id", "try-it-now-target");
+        endpoint.setAttribute("protocol", "http");
+        endpoint.setAttribute("hostname", "repose-origin-" + user.tenant + "-" + versionId.replace('.','-'));
+        endpoint.setAttribute("port", "8000");
+        endpoint.setAttribute("root-path", "/");
+        endpoint.setAttribute("default", "true");
+        destinations.appendChild(endpoint);
+
+        return convertDocumentToString(document);
+
+    }
+
+    private Map<String, String> getFilterXmls(JsonNode node) {
+        Map<String, Document> filterXmlMap = new HashMap<>();
+
+        //create new instance of doc factory
+        DocumentBuilderFactory icFactory = DocumentBuilderFactory.newInstance();
+        //get new doc builder
+        DocumentBuilder icBuilder;
+        try {
+            if (node.isArray()) {
+                Iterator<JsonNode> jsonNodeIterator = node.elements();
+                while (jsonNodeIterator.hasNext()) {
+                    Document filterXml = null;
+                    JsonNode jsonNode = jsonNodeIterator.next();
+                    JsonNode name = jsonNode.get("filter");
+                    Filter filter = Filter.findByName(name.textValue());
+                    if (filter != null) {
+                        //does filter already set in the map
+                        filterXml = filterXmlMap.get(filter.name + ".cfg.xml");
+                        if (filterXml == null) {
+                            icBuilder = icFactory.newDocumentBuilder();
+                            filterXml = icBuilder.newDocument();
+                            filterXmlMap.put(filter.name + ".cfg.xml", filterXml);
+                        }
+                        //iterate through each token of the name and create an xml tree if one does not exist.
+                        Logger.info(jsonNode.get("name").asText());
+                        String[] nameTokens = jsonNode.get("name").asText().split(Pattern.quote("."));
+                        Iterator<String> nameIterator = Arrays.asList(nameTokens).iterator();
+                        Element currentElement = filterXml.getDocumentElement();
+                        while(nameIterator.hasNext()){
+                            String nameToken = nameIterator.next();
+                            if(currentElement == filterXml.getDocumentElement()) {
+                                //this is the root element
+                                if(filterXml.getDocumentElement() == null) {
+                                    //this document is empty!  add a new one
+                                    Element rootElement = filterXml.createElementNS(filter.namespace, nameToken);
+                                    filterXml.appendChild(rootElement);
+                                    currentElement = rootElement;
+                                } else if(!currentElement.getNodeName().equals(nameToken)){
+                                    //not root nameToken.  gotta add
+                                    currentElement = insertElement(currentElement,
+                                            filterXml, nameToken,
+                                            jsonNode.get("value").asText(),
+                                            jsonNode.get("type").asText(),
+                                            !nameIterator.hasNext());
+                                }
+                            } else {
+                                currentElement = insertElement(currentElement,
+                                        filterXml, nameToken,
+                                        jsonNode.get("value").asText(),
+                                        jsonNode.get("type").asText(),
+                                        !nameIterator.hasNext());
+                            }
+                        }
+                        printDocument(filterXml);
+                    }
+
+                    Logger.info("get the name :" + name);
+
+                }
+            }
+        } catch(ParserConfigurationException pce){
+            pce.printStackTrace();
+        }
+        Map<String, String> filterMap = new HashMap<>();
+        filterXmlMap.forEach((name, doc) ->
+                filterMap.put(name, convertDocumentToString(doc))
+        );
+        return filterMap;
+    }
+
+    private Element insertElement(Element parentElement, Document document,
+                                  String elementName, String elementValue, String valueType, boolean isLast){
+        Logger.trace("In insertElement for " + parentElement +
+                " with " + elementName + " and " + elementValue + " (type " + valueType + ")");
+        Element currentElement = null;
+
+        if(isLast){
+            String patternString = "(.*)\\[(\\d+)\\]$";
+            Logger.trace("Check if parent is a list of grandparent " + patternString);
+            Matcher matcher = Pattern.compile(patternString).matcher(elementName);
+            if(matcher.find()){
+                //get the real parent.
+                Element realParentElement =
+                        getRealParentElement(parentElement, Integer.parseInt(matcher.group(2)), document);
+
+                switch(valueType){
+                    case "text":
+                        realParentElement.setTextContent(elementValue);
+                        break;
+                    case "attribute":
+                        realParentElement.setAttribute(matcher.group(1), elementValue);
+                        break;
+                    default:
+                        Logger.error(valueType + " is not defined.");
+                }
+            } else {
+                //not a list
+                switch(valueType){
+                    case "text":
+                        parentElement.setTextContent(elementValue);
+                        break;
+                    case "attribute":
+                        parentElement.setAttribute(elementName, elementValue);
+                        break;
+                    default:
+                        Logger.error(valueType + " is not defined.");
+                }
+            }
+        } else {
+            Logger.trace("Check if parent has childnodes that equal to " + elementName);
+            for(int child = 0; child < parentElement.getChildNodes().getLength(); child ++) {
+                if(parentElement.getChildNodes().item(child).getNodeName().equals(elementName)){
+                    //element found
+                    return (Element)parentElement.getChildNodes().item(child);
+                }
+            }
+            //not found
+            //check if it's a list first
+            if(elementName.contains("[") && elementName.contains("]")){
+                Logger.trace("element is a list");
+                elementName = elementName.split(Pattern.quote("["))[0];
+            } else {
+                Logger.trace("not yet added.");
+                currentElement = document.createElement(elementName);
+                parentElement.appendChild(currentElement);
+            }
+        }
+
+
+        return currentElement;
+    }
+
+    private Element getRealParentElement(Element currentElement, int order, Document document){
+        if(currentElement.getParentNode().getChildNodes().getLength() >= order){
+            //we haven't created this node yet. Let's do it.
+            for(int child = 0;
+                child <= order - (currentElement.getParentNode().getChildNodes().getLength());
+                child ++ ){
+                Element newElement = document.createElement(currentElement.getNodeName());
+                currentElement.getParentNode().appendChild(newElement);
+            }
+        }
+        return (Element)currentElement.getParentNode().getChildNodes().item(order);
+    }
+
+    private String convertDocumentToString(Document doc) {
+        try {
+            TransformerFactory tf = TransformerFactory.newInstance();
+            Transformer transformer = tf.newTransformer();
+            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(doc), new StreamResult(writer));
+            return writer.getBuffer().toString().replaceAll("\n|\r", "");
+        }catch(TransformerException ex) {
+            ex.printStackTrace();
+        }
+        return null;
+    }
+
+    private void printDocument(Document doc) {
+        Logger.info(convertDocumentToString(doc));
+    }
+
+    private void createOriginContainer(User user, String version) throws InternalServerException {
+        Logger.debug("create origin instance " + user);
+
+        Cluster cluster = null;
+        try {
+            cluster = new Carina().getClusterByName(
+                    play.Play.application().configuration().getString("user.cluster.name"), user, false, true);
+        } catch (InternalServerException e) {
+            e.printStackTrace();
+            throw new InternalServerException(e.getMessage());
+        }
+
+
+        try {
+            final DockerClient docker = DefaultDockerClient.builder()
+                    .uri(URI.create(cluster.getUri()))
+                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
+                    .build();
+
+            //write docker file for new image
+            try {
+                Files.copy(
+                        play.Play.application().path().toPath().resolve("carina").
+                                resolve("origin-image").resolve("Dockerfile"),
+                        Helpers.getOriginImageDirectory(user.tenant).resolve("Dockerfile"),
+                        StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(
+                        play.Play.application().path().toPath().resolve("carina").
+                                resolve("origin-image").resolve("backend.js"),
+                        Helpers.getOriginImageDirectory(user.tenant).resolve("backend.js"),
+                        StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(
+                        play.Play.application().path().toPath().resolve("carina").
+                                resolve("origin-image").resolve("package.json"),
+                        Helpers.getOriginImageDirectory(user.tenant).resolve("package.json"),
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new InternalServerException(e.getLocalizedMessage());
+            }
+
+            //remove all containers with image
+            List<Container> containerList = docker.listContainers(
+                    DockerClient.ListContainersParam.allContainers());
+
+            Predicate<Container> hasImage = c -> c.image().equals("repose-origin-" + user.tenant + "-" + version);
+
+            List<Container> containersToRemove = containerList.stream().filter(hasImage).collect(Collectors.toList());
+            containersToRemove.forEach(container1 -> {
+                try {
+                    docker.killContainer(container1.id());
+                    Logger.info("removed " + container1.id());
+                }catch(DockerException | InterruptedException de ){
+                    Logger.error("failed to stop " + de.getLocalizedMessage());
+                }
+                try {
+                    docker.removeContainer(container1.id());
+                    Logger.info("removed " + container1.id());
+                }catch(DockerException | InterruptedException de ){
+                    Logger.error("failed to stop " + de.getLocalizedMessage());
+                }
+            });
+
+            //build an image with origin service
+            try {
+                Logger.info("Build image with " + cluster + " at " + DateTime.now());
+                try {
+                    docker.removeImage("repose-origin-" + user.tenant + "-" + version, true, true);
+                } catch(ImageNotFoundException infe) {
+                    Logger.warn("Image was not found.  Should be ok. " +
+                            infe.getImage() + " " + infe.getLocalizedMessage());
+                } catch(DockerRequestException dre) {
+                    Logger.warn("Failed request. " +
+                            dre.message() + " " + dre.getLocalizedMessage());
+                }
+                docker.build(
+                        Paths.get(Helpers.getOriginImageDirectory(user.tenant).toString()),
+                        "repose-origin-" + user.tenant + "-" + version);
+
+                ContainerConfig containerConfig = ContainerConfig.builder()
+                        .image("repose-origin-" + user.tenant + "-" + version)
+                        .build();
+                //name has underscores because of ip addy
+                ContainerCreation creation = docker.createContainer(containerConfig,
+                        "repose-origin-" + user.tenant + "-" + version.replace('.','-'));
+                final String id = creation.id();
+                docker.startContainer(id);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } catch (DockerCertificateException | DockerException | InterruptedException e) {
+            e.printStackTrace();
+            throw new InternalServerException(e.getMessage());
+        }
+    }
+
+    /**
+     * Spin up a repose container
+     * @param user
+     * @param filters
+     * @param version
+     */
+    private void createReposeContainer(User user, Map<String, String> filters, String version) throws InternalServerException {
+        Logger.debug("create repose instance " + user + " and version: " + version);
+
+        Cluster cluster = null;
+        try {
+            cluster = new Carina().getClusterByName(
+                    play.Play.application().configuration().getString("user.cluster.name"), user, false, true);
+        } catch (InternalServerException e) {
+            e.printStackTrace();
+            throw new InternalServerException(e.getMessage());
+        }
+
+        try {
+            final DockerClient docker = DefaultDockerClient.builder()
+                    .uri(URI.create(cluster.getUri()))
+                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
+                    .build();
+            //write our filters to repose config directory
+            filters.entrySet().stream().forEach(
+                    e -> {
+                        try {
+                            File file = Paths.get(
+                                    Helpers.getReposeConfigDirectory(user.tenant).toString(),
+                                    e.getKey()).toFile();
+                            FileWriter fileWriter = new FileWriter(file);
+                            fileWriter.write(e.getValue());
+                            fileWriter.close();
+                        } catch (IOException ioe) {
+                            Logger.error("Unable to write " + e.getKey());
+                        }
+                    }
+            );
+
+            //write docker file for new image
+            try {
+                Files.copy(
+                        play.Play.application().path().toPath().resolve("carina").
+                                resolve("repose-image").resolve("Dockerfile"),
+                        Helpers.getReposeImageDirectory(user.tenant).resolve("Dockerfile"),
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new InternalServerException(e.getLocalizedMessage());
+            }
+
+            //remove all containers with image
+            List<Container> containerList = docker.listContainers(
+                    DockerClient.ListContainersParam.allContainers());
+
+            Predicate<Container> hasImage = c -> c.image().equals("repose-" + user.tenant + "-" + version);
+
+            List<Container> containersToRemove = containerList.stream().filter(hasImage).collect(Collectors.toList());
+            containersToRemove.forEach(container1 -> {
+                try {
+                    docker.killContainer(container1.id());
+                    Logger.info("removed " + container1.id());
+                }catch(DockerException | InterruptedException de ){
+                    Logger.error("failed to stop " + de.getLocalizedMessage());
+                }
+                try {
+                    docker.removeContainer(container1.id());
+                    Logger.info("removed " + container1.id());
+                }catch(DockerException | InterruptedException de ){
+                    Logger.error("failed to stop " + de.getLocalizedMessage());
+                }
+            });
+
+            //build an image with repose
+            try {
+                Logger.info("Build image with " + cluster + " at " + DateTime.now());
+                try {
+                    docker.removeImage("repose-" + user.tenant + "-" + version, true, true);
+                } catch(ImageNotFoundException infe) {
+                    Logger.warn("Image was not found.  Should be ok. " +
+                            infe.getImage() + " " + infe.getLocalizedMessage());
+                } catch(DockerRequestException dre) {
+                    Logger.warn("Failed request. " +
+                            dre.message() + " " + dre.getLocalizedMessage());
+                }
+                docker.build(
+                        Paths.get(Helpers.getReposeImageDirectory(user.tenant).toString()),
+                        "repose-" + user.tenant + "-" + version);
+
+                Map<String, List<PortBinding>> portBindings = new HashMap<String, List<PortBinding>>();
+
+                PortBinding randomPort = PortBinding.randomPort("0.0.0.0");
+
+                portBindings.put("8080/tcp", new ArrayList<PortBinding>() {
+                    {
+                        add(randomPort);
+                    }
+                });
+
+                //link by name
+                HostConfig hostConfig = HostConfig.builder().
+                        portBindings(portBindings).
+                        links("repose-origin-" + user.tenant + "-" + version.replace('.', '-')).
+                        build();
+
+                ContainerConfig containerConfig = ContainerConfig.builder()
+                        .image("repose-" + user.tenant + "-" + version)
+                        .hostConfig(hostConfig).exposedPorts(ImmutableSet.of(randomPort.hostPort()))
+                        .build();
+                ContainerCreation creation = docker.createContainer(containerConfig,
+                        "repose-" + user.tenant + "-" + version.replace('.','_'));
+                final String id = creation.id();
+                docker.startContainer(id);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new InternalServerException(e.getMessage());
+            }
+        } catch (DockerCertificateException | DockerException | InterruptedException e) {
+            e.printStackTrace();
+            throw new InternalServerException(e.getMessage());
+        }
+    }
 }
 

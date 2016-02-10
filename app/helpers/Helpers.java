@@ -1,180 +1,648 @@
 package helpers;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import exceptions.InternalServerException;
+import exceptions.NotFoundException;
+import models.Filter;
+import models.User;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import play.Logger;
+import play.libs.Json;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.zip.ZipEntry;
 
 /**
  * Created by dimi5963 on 8/15/15.
  */
 public class Helpers {
 
+    private static List<String> nativeElements = Arrays.asList("string", "double", "boolean", "anyURI");
+    private static List<String> attributeElements = Arrays.asList("minOccurs", "maxOccurs", "use", "default");
+
+    public static Filter getFilterNamespace(String filterName){
+        return Filter.findByName(filterName);
+    }
+
+    private static void saveFilterNamespace(String filterName, String namespace){
+        Logger.info("Save filter namespace: " + filterName + " and namespace " + namespace);
+        Filter filter = getFilterNamespace(filterName);
+        if(filter == null){
+            filter = new Filter();
+            filter.setName(filterName);
+        }
+        filter.setNamespace(namespace);
+        filter.save();
+    }
+
     /**
      *
      * @param jsonObject
      * @param document
      */
-    public static JSONObject generateJSONTree(JSONObject jsonObject, Document document) {
+    public static JSONObject generateJSONTree(String filterName, JSONObject jsonObject, Document document) {
         //figure out if current node has
         //get children of current node
-        try {
-            Node schema = document.getElementsByTagName("xs:schema").item(0);
-            NodeList schemaList = schema.getChildNodes();
-            for (int i = 0; i < schemaList.getLength(); i++) {
-                //get element
-                if (schemaList.item(i).getNodeName() == "xs:element") {
-                    parseElement(jsonObject, document, schemaList.item(i));
-                    break;
-                }
+        Logger.info("Generate JSON tree");
+        Node schema = document.getElementsByTagName("xs:schema").item(0);
+        NodeList schemaList = schema.getChildNodes();
+        for (int i = 0; i < schemaList.getLength(); i++) {
+            //get element
+            if (schemaList.item(i).getNodeName() == "xs:element") {
+                Logger.info("This is the starting point of xsd.  Le'go!");
+                parseElement(jsonObject, document, schemaList.item(i));
+                break;
             }
+        }
 
-        }catch(JSONException e){}
+        //save the filter namespace
+        saveFilterNamespace(filterName, schema.getAttributes().getNamedItem("targetNamespace").getTextContent());
+
 
         return jsonObject;
 
     }
 
-    private static void updateAnnotation(Node node, JSONObject jsonObject) throws JSONException{
+    private static void updateAnnotation(Node node, JSONObject jsonObject){
+        Logger.info("Let's update the docs for " + node.getTextContent());
+        String doc = "";
         for(int l = 0; l < node.getChildNodes().getLength(); l ++){
             if(node.getChildNodes().item(l).getNodeName() ==
                     "xs:documentation") {
                 for(int m = 0; m < node.getChildNodes().item(l).getChildNodes().getLength(); m ++){
                     if(node.getChildNodes().item(l).getChildNodes().item(m).getNodeName() == "html:p"){
-                        jsonObject.put("doc",
-                                node.getChildNodes().item(l).getChildNodes().item(m).getTextContent());
+                        doc = doc.concat(node.getChildNodes().item(l).getChildNodes().item(m).getTextContent());
 
                     }
                 }
             }
         }
+        if(doc.length() > 0) {
+            addToJsonObject(jsonObject, "doc", doc);
+        }
     }
 
-    private static void updateAll(Node node, JSONObject jsonObject, Document document) throws JSONException{
+    private static void updateList(Node node, JSONObject jsonObject, Document document) {
+        Logger.info("Let's get everything into a list");
+        String elementType = node.getAttributes().getNamedItem("itemType").getTextContent();
+        String[] elementTypeTokens = elementType.split(":");
+        String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+        Logger.info("Check if " + itemType + " is native");
+        if(!nativeElements.contains(itemType)){
+            Node child = retrieveChild(elementType, document);
+
+            Logger.info("child is " + child.getNodeName());
+            if(child != null && child.getNodeName().contains("complexType")) {
+                Logger.info("It's a complex type");
+                JSONArray innerJsonArray = new JSONArray();
+                addToJsonObject(jsonObject, "items", innerJsonArray);
+                Logger.info("Retrieve the child element");
+                parseComplexType(jsonObject, innerJsonArray, document, child);
+            } else {
+                addToJsonObject(jsonObject, "name", "value");
+                addToJsonObject(jsonObject, "xsd-type", "text");
+                parseSimpleType(jsonObject, document, child);
+            }
+
+
+        }
+    }
+
+    private static void updateAll(Node node, JSONArray jsonArray, Document document){
         NodeList allNodeList = node.getChildNodes();
         for(int l = 0; l < allNodeList.getLength(); l ++){
-            if(allNodeList.item(l).getNodeName() == "xs:element"){
+            if(allNodeList.item(l).getNodeName().contains("element")){
+                JSONObject jsonObject = new JSONObject();
+                Logger.info("Check if minOccurs attribute exists.  By default it's 1");
+                if(allNodeList.item(l).hasAttributes() &&
+                        allNodeList.item(l).getAttributes().getNamedItem("minOccurs") != null){
+                    addToJsonObject(jsonObject, "minOccurs",
+                            allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
+                    if(allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent().equals("1")){
+                        addToJsonObject(jsonObject, "required", "required");
+                    } else {
+                        addToJsonObject(jsonObject, "required", "optional");
+                    }
+                } else {
+                    addToJsonObject(jsonObject, "minOccurs", "1");
+                    addToJsonObject(jsonObject, "required", "required");
+                }
+
                 parseElement(jsonObject, document, allNodeList.item(l));
+                jsonArray.put(jsonObject);
             }
         }
     }
 
-    private static void updateRestriction(Node node, JSONObject jsonObject) throws JSONException{
-        jsonObject.put("type", node.getAttributes().getNamedItem("base").getTextContent());
-        for(int l = 0; l < node.getChildNodes().getLength(); l ++){
-            if(node.getChildNodes().item(l).getNodeName() ==
-                    "xs:minInclusive") {
-                jsonObject.put("minInclusive",
-                        node.getChildNodes().item(l).getAttributes().getNamedItem("value").getTextContent());
-            } else if(node.getChildNodes().item(l).getNodeName() ==
-                    "xs:maxInclusive") {
-                jsonObject.put("maxInclusive",
-                        node.getChildNodes().item(l).getAttributes().getNamedItem("value").getTextContent());
+    private static void updateRestriction(Node node, JSONObject jsonObject) {
+        Logger.info("Update restriction for " + node.getNodeName());
+        String[] baseTypeTokens = node.getAttributes().getNamedItem("base").getTextContent().split(":");
+        String baseType = baseTypeTokens.length > 1 ? baseTypeTokens[1] : baseTypeTokens[0];
+        addToJsonObject(jsonObject, "type", baseType);
+        for(int childNode = 0; childNode < node.getChildNodes().getLength(); childNode ++){
+            String[] elementTypeTokens = node.getChildNodes().item(childNode).getNodeName().split(":");
+            String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+            Logger.info("Restriction type " + itemType);
+            switch(itemType){
+                case "enumeration":
+                    List<String> enumerationList = getJsonObject(jsonObject, "enumeration");
+                    Logger.info("let's get some enumeration up in here. " +
+                                    node.getChildNodes().item(childNode).getAttributes().getNamedItem("value").getTextContent()
+                    );
+                    if(enumerationList == null){
+                        enumerationList = new ArrayList<String>();
+                        enumerationList.add(
+                                node.getChildNodes().item(childNode).getAttributes().getNamedItem("value").getTextContent()
+                        );
+                    } else {
+                        Logger.info("enumeration: " + enumerationList);
+                        enumerationList.add(
+                                node.getChildNodes().item(childNode).getAttributes().getNamedItem("value").getTextContent());
+                    }
+                    addToJsonObject(jsonObject, itemType, enumerationList);
+                    addToJsonObject(jsonObject, "type", "select");
+                    break;
+                case "#text":
+                    break;
+                default:
+                    addToJsonObject(jsonObject,
+                            itemType,
+                            node.getChildNodes().item(childNode).getAttributes().getNamedItem("value").getTextContent());
+
             }
         }
     }
 
-    private static void updateSequence(Node node, JSONObject jsonObject, Document document) throws JSONException{
-        JSONObject listObject = new JSONObject();
-        jsonObject.put("list", listObject);
-        //list of objects.  each child we care about is xs:element
+    private static void updateChoice(Node node, JSONArray jsonArray, Document document){
+        Logger.info("Let's get us those radio buttons");
         NodeList allNodeList = node.getChildNodes();
         for(int l = 0; l < allNodeList.getLength(); l ++){
-            if(allNodeList.item(l).getNodeName() == "xs:element"){
-                listObject.put("minimum",
-                        allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
-                listObject.put("maximum",
-                        allNodeList.item(l).getAttributes().getNamedItem("maxOccurs").getTextContent());
-                parseElement(listObject, document, allNodeList.item(l));
+            if(allNodeList.item(l).getNodeName().contains("element")){
+                JSONObject jsonObject = new JSONObject();
+                if(allNodeList.item(l).getAttributes().getNamedItem("minOccurs") != null){
+                    if(allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent().equals("1")){
+                        addToJsonObject(jsonObject, "required", "required");
+                    } else {
+                        addToJsonObject(jsonObject, "required", "optional");
+                    }
+                    addToJsonObject(jsonObject, "minOccurs",
+                            allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
+                    addToJsonObject(jsonObject, "minOccurs",
+                            allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
+
+                } else {
+                    addToJsonObject(jsonObject, "required", "optional");
+                }
+                addToJsonObject(jsonObject, "type", "radio");
+                parseElement(jsonObject, document, allNodeList.item(l));
+                jsonArray.put(jsonObject);
+            }
+        }
+    }
+
+    private static void updateSequence(Node node, JSONArray jsonArray, Document document) {
+        NodeList allNodeList = node.getChildNodes();
+        for(int l = 0; l < allNodeList.getLength(); l ++){
+            if(allNodeList.item(l).getNodeName().contains("element")){
+                JSONObject jsonObject = new JSONObject();
+                if(allNodeList.item(l).getAttributes().getNamedItem("minOccurs") != null){
+                    if(allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent().equals("1")){
+                        addToJsonObject(jsonObject, "required", "required");
+                    } else {
+                        addToJsonObject(jsonObject, "required", "optional");
+                    }
+                    addToJsonObject(jsonObject, "minOccurs",
+                            allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
+                    addToJsonObject(jsonObject, "minOccurs",
+                            allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
+
+                } else {
+                    addToJsonObject(jsonObject, "required", "optional");
+                }
+                if(allNodeList.item(l).getAttributes().getNamedItem("maxOccurs") != null &&
+                        !allNodeList.item(l).getAttributes().getNamedItem("maxOccurs").getTextContent().equals("1"))
+                    addToJsonObject(jsonObject, "type", "list");
+                parseElement(jsonObject, document, allNodeList.item(l));
+                jsonArray.put(jsonObject);
+            }
+        }
+    }
+
+    private static void updateSimpleContent(Node node, JSONArray jsonArray, Document document){
+        Logger.info("Iterate through children of simple content");
+        for(int childNode = 0; childNode < node.getChildNodes().getLength(); childNode++){
+            if(node.getChildNodes().item(childNode).getNodeName().contains("extension")){
+                Logger.info("We got an extension");
+                updateExtension(node.getChildNodes().item(childNode), jsonArray, document);
+            }
+            if(node.getChildNodes().item(childNode).getNodeName().contains("attribute")){
+                JSONObject jsonObject = new JSONObject();
+                updateAttribute(node.getChildNodes().item(childNode), jsonObject, document);
+                jsonArray.put(jsonObject);
+            }
+        }
+    }
+
+    /***
+     * load the base element as well as all other elements with it
+     * @param node
+     * @param jsonArray
+     * @param document
+     */
+    private static void updateExtension(Node node, JSONArray jsonArray, Document document){
+        Logger.info("Base attribute for the extension is: " +
+                node.getAttributes().getNamedItem("base").getTextContent());
+        String elementType = node.getAttributes().getNamedItem("base").getTextContent();
+        String[] elementTypeTokens = elementType.split(":");
+        String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+        Logger.info("Check if " + itemType + " is native");
+        if(!nativeElements.contains(itemType)){
+            Node child = retrieveChild(elementType, document);
+
+            Logger.info("child is " + child.getNodeName());
+            JSONObject jsonObject = new JSONObject();
+            if(child != null && child.getNodeName().contains("complexType")) {
+                Logger.info("It's a complex type");
+                JSONArray innerJsonArray = new JSONArray();
+                addToJsonObject(jsonObject, "items", innerJsonArray);
+                Logger.info("Retrieve the child element");
+                parseComplexType(jsonObject, innerJsonArray, document, child);
+            } else {
+                addToJsonObject(jsonObject, "name", "value");
+                addToJsonObject(jsonObject, "xsd-type", "text");
+                parseSimpleType(jsonObject, document, child);
+                jsonArray.put(jsonObject);
+            }
+
+
+        }
+        //TODO: get all attributes as objects
+        for(int childNode = 0; childNode < node.getChildNodes().getLength(); childNode ++){
+            if(node.getChildNodes().item(childNode).getNodeName().contains("attribute")){
+                JSONObject jsonObject = new JSONObject();
+                updateAttribute(node.getChildNodes().item(childNode), jsonObject, document);
+                jsonArray.put(jsonObject);
             }
         }
 
     }
 
-    private static void updateAttribute(Node node, JSONObject jsonObject, Document document) throws JSONException {
-        JSONObject attributeObject = new JSONObject();
-        jsonObject.put(
-                node.getAttributes().getNamedItem("name").getTextContent(),
-                attributeObject);
-        attributeObject.put("xsd-type", "attribute");
-        if(node.hasAttributes() &&
-                node.getAttributes().getNamedItem("use") != null &&
-                node.getAttributes().getNamedItem("use").getTextContent().equals("required")){
-            attributeObject.put("required", true);
-        } else {
-            attributeObject.put("required", false);
-        }
-        if(node.hasAttributes() &&
-                node.getAttributes().getNamedItem("default") != null){
-            attributeObject.put("default", node.getAttributes().getNamedItem("default").getTextContent());
-        }
+    private static void updateAttribute(Node node, JSONObject jsonObject, Document document) {
+        addToJsonObject(jsonObject, "xsd-type", "attribute");
+        for(int attribute = 0; attribute < node.getAttributes().getLength(); attribute++){
+            switch (node.getAttributes().item(attribute).getNodeName()){
+                case "use":
+                    addToJsonObject(jsonObject, "required", node.getAttributes().item(attribute).getTextContent());
+                    break;
+                case "type":
+                    //TODO: check if native.  If not, go parse
+                    String elementType = node.getAttributes().getNamedItem("type").getTextContent();
+                    String[] elementTypeTokens = elementType.split(":");
+                    String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+                    if(nativeElements.contains(itemType)) {
+                        addToJsonObject(jsonObject, "type", itemType);
+                    } else {
+                        Node child = retrieveChild(elementType, document);
 
-        for(int l = 0; l < node.getChildNodes().getLength(); l ++) {
-            //if annotation, let's add the doc
-            if (node.getChildNodes().item(l).getNodeName() == "xs:annotation") {
-                //documentation
-                updateAnnotation(node.getChildNodes().item(l), attributeObject);
-            }
-        }
-        parseAttribute(attributeObject, document, node);
-    }
-
-    private static void updateElement(JSONObject jsonObject, Document document, Node element) throws JSONException{
-        String itemType =
-                element.getAttributes().getNamedItem("type").getTextContent().split(":")[1];
-        if(element.hasAttributes() &&
-                element.getAttributes().getNamedItem("default") != null){
-            jsonObject.put("default", element.getAttributes().getNamedItem("default").getTextContent());
-        }
-
-
-        if(itemType.equals("string")){
-            jsonObject.put("type", "string");
-        } else {
-            NodeList nodeList = document.getElementsByTagName("*");
-            for(int j = 0; j < nodeList.getLength(); j++){
-                if(nodeList.item(j).hasAttributes() &&
-                        nodeList.item(j).getAttributes().getLength() > 0 &&
-                        nodeList.item(j).getAttributes().getNamedItem("name") != null &&
-                        nodeList.item(j).getAttributes().getNamedItem("name").getTextContent().equals(itemType)){
-                    //got the child node.  Let's store the name under childNode
-                    NodeList childChildNodeList = nodeList.item(j).getChildNodes();
-                    for(int k = 0; k < childChildNodeList.getLength(); k ++){
-                        //if annotation, let's add the doc
-                        if(childChildNodeList.item(k).getNodeName() == "xs:annotation"){
-                            //documentation
-                            updateAnnotation(childChildNodeList.item(k), jsonObject);
-                        } else if(childChildNodeList.item(k).getNodeName() == "xs:all"){
-                            //map of objects.  each child we care about is xs:element
-                            updateAll(childChildNodeList.item(k), jsonObject, document);
-                        } else if(childChildNodeList.item(k).getNodeName() == "xs:restriction"){
-                            //check type.
-                            updateRestriction(childChildNodeList.item(k), jsonObject);
-                        } else if(childChildNodeList.item(k).getNodeName() == "xs:sequence"){
-                            updateSequence(childChildNodeList.item(k), jsonObject, document);
-                        } else if(childChildNodeList.item(k).getNodeName() == "xs:attribute"){
-                            updateAttribute(childChildNodeList.item(k), jsonObject, document);
+                        if(child != null){
+                            Logger.info("In Restriction. It's a " + child.getNodeName() + " type");
+                            if(child.getNodeName().contains("complexType")){
+                                JSONArray jsonArray = new JSONArray();
+                                addToJsonObject(jsonObject, "items", jsonArray);
+                                Logger.info("Retrieve the child element");
+                                parseComplexType(jsonObject, jsonArray, document, child);
+                            } else {
+                                parseSimpleType(jsonObject, document, child);
+                            }
                         }
 
                     }
                     break;
-                }
+                default:
+                    addToJsonObject(jsonObject,
+                            node.getAttributes().item(attribute).getNodeName(),
+                            node.getAttributes().item(attribute).getTextContent());
+            }
+        }
+        for(int childNode = 0; childNode < node.getChildNodes().getLength(); childNode++){
+            String[] nodeTokens = node.getChildNodes().item(childNode).getNodeName().split(":");
+            String nodeName = nodeTokens.length > 1? nodeTokens[1]: nodeTokens[0];
+            Logger.info("Looking for our special snowflakes and found " + nodeName);
+            switch(nodeName){
+                case "annotation":
+                    Logger.info("We found docs!  Always good!");
+                    updateAnnotation(node.getChildNodes().item(childNode), jsonObject);
+                    break;
+                default:
+                    Logger.error("What did we just find??? " + nodeName);
+                    break;
             }
         }
     }
 
-    private static void parseAttribute(JSONObject jsonObject, Document document, Node element) throws JSONException{
-        updateElement(jsonObject, document, element);
+    private static void parseElement(JSONObject jsonObject, Document document, Node element){
+        Logger.info("In parseElement. Let's iterate through its attributes");
+        for(int attr = 0; attr < element.getAttributes().getLength(); attr++){
+            Logger.info("Attribute: " +
+                    element.getAttributes().item(attr).getNodeName() + " = " +
+                    element.getAttributes().item(attr).getTextContent());
+        }
+
+        String elementName = element.getAttributes().getNamedItem("name").getTextContent();
+        Logger.info("Add the name for " + elementName);
+        addToJsonObject(jsonObject, "name", elementName);
+
+        if(element.getAttributes().getNamedItem("type") != null){
+            Logger.info("We have a type for " + elementName);
+            String elementType = element.getAttributes().getNamedItem("type").getTextContent();
+            String[] elementTypeTokens = elementType.split(":");
+            String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+
+            Logger.info("Check if " + itemType + " is native");
+            if(!nativeElements.contains(itemType)){
+                Node child = retrieveChild(elementType, document);
+
+                if(child != null && child.getNodeName().contains("complexType")){
+                    Logger.info("It's a complex type");
+                    JSONArray jsonArray = new JSONArray();
+                    addToJsonObject(jsonObject, "items", jsonArray);
+                    Logger.info("Retrieve the child element");
+                    parseComplexType(jsonObject, jsonArray, document, child);
+                } else {
+                    parseSimpleType(jsonObject, document, child);
+                }
+
+            } else {
+                addToJsonObject(jsonObject, "type", itemType);
+            }
+        }
+
+        for(int attr = 0; attr < element.getAttributes().getLength(); attr++){
+            if(attributeElements.contains(element.getAttributes().item(attr).getNodeName())){
+                Logger.info("Attribute: " +
+                        element.getAttributes().item(attr).getNodeName() + " = " +
+                        element.getAttributes().item(attr).getTextContent());
+                addToJsonObject(jsonObject,
+                        element.getAttributes().item(attr).getNodeName(),
+                        element.getAttributes().item(attr).getTextContent());
+            }
+        }
+
+        Logger.info("Apparently, we also do nested elements...");
+        for(int childNode = 0; childNode < element.getChildNodes().getLength(); childNode++){
+            String[] nodeTokens = element.getChildNodes().item(childNode).getNodeName().split(":");
+            String nodeName = nodeTokens.length > 1? nodeTokens[1]: nodeTokens[0];
+            Logger.info("Looking for our special snowflakes and found " + nodeName);
+            switch(nodeName){
+                case "annotation":
+                    Logger.info("We found docs!  Always good!");
+                    updateAnnotation(element.getChildNodes().item(childNode), jsonObject);
+                    break;
+                case "#text":
+                    break;
+                default:
+                    Logger.error("We found another nested element.  Fix the thing!");
+                    break;
+            }
+        }
     }
 
-    private static void parseElement(JSONObject jsonObject, Document document, Node element) throws JSONException{
-        //root element.  store name
-        JSONObject childObject = new JSONObject();
-        jsonObject.put(
-                element.getAttributes().getNamedItem("name").getTextContent(),
-                childObject);
-
-        updateElement(childObject, document, element);
+    private static void parseSimpleType(JSONObject jsonObject, Document document, Node element) {
+        Logger.info("We're in the simple type.  Let's check it out.");
+        for(int childNode = 0; childNode < element.getChildNodes().getLength(); childNode++){
+            String[] nodeTokens = element.getChildNodes().item(childNode).getNodeName().split(":");
+            String nodeName = nodeTokens.length > 1? nodeTokens[1]: nodeTokens[0];
+            Logger.info("Looking for our special snowflakes and found " + nodeName);
+            switch(nodeName){
+                case "list":
+                    Logger.info("Oooh, we got a select button!  Yay!");
+                    updateList(element.getChildNodes().item(childNode), jsonObject, document);
+                    addToJsonObject(jsonObject, "type", "multi-select");
+                    break;
+                case "restriction":
+                    Logger.info("We found a restriction. Yay!");
+                    updateRestriction(element.getChildNodes().item(childNode), jsonObject);
+                    break;
+                case "annotation":
+                    Logger.info("We found docs!  Always good!");
+                    updateAnnotation(element.getChildNodes().item(childNode), jsonObject);
+                    break;
+                default:
+                    break;
+            }
+        }
     }
+
+    /***
+     * This method takes in an array and checks which type of complexType it is.
+     * Possibilities are simpleContent, all, sequence
+     * all is a set of elements that occur once
+     * sequence is a list of elements that occur more than once
+     * simpleContent is one element
+     * @param parentJsonObject
+     * @param jsonArray
+     * @param document
+     * @param element
+     */
+    private static void parseComplexType(JSONObject parentJsonObject,
+                                         JSONArray jsonArray, Document document, Node element){
+        Logger.info("We're in the complex type.  Let's check it out.");
+        for(int childNode = 0; childNode < element.getChildNodes().getLength(); childNode++){
+            String[] nodeTokens = element.getChildNodes().item(childNode).getNodeName().split(":");
+            String nodeName = nodeTokens.length > 1? nodeTokens[1]: nodeTokens[0];
+            Logger.info("Looking for our special snowflakes and found " + nodeName);
+            switch(nodeName){
+                case "all":
+                    Logger.info("We found a set of elements. Yay!");
+                    updateAll(element.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "sequence":
+                    Logger.info("We found a list of elements. Yay!");
+                    updateSequence(element.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "annotation":
+                    Logger.info("We found docs!  Always good!");
+                    updateAnnotation(element.getChildNodes().item(childNode), parentJsonObject);
+                    break;
+                case "attribute":
+                    Logger.info("We found an attribute. Yay!");
+                    JSONObject jsonObject = new JSONObject();
+                    updateAttribute(element.getChildNodes().item(childNode), jsonObject, document);
+                    jsonArray.put(jsonObject);
+                case "simpleContent":
+                    Logger.info("Simple content.  Add everything");
+                    updateSimpleContent(element.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "choice":
+                    Logger.info("Choice.  Radio buttons ftw!");
+                    updateChoice(element.getChildNodes().item(childNode), jsonArray, document);
+                default:
+                    break;
+            }
+        }
+        Logger.info(element.getChildNodes().getLength() + "");
+        Logger.info(element.getNodeName());
+        Logger.info(element.getAttributes().getNamedItem("name").getTextContent());
+
+
+    }
+
+    /***
+     * This method checks whether the element has any children that are complexType
+     *
+     * @param elementType
+     * @param document
+     * @return
+     */
+    private static Node retrieveChild(String elementType, Document document) {
+        String[] elementTypeTokens = elementType.split(":");
+        Logger.info("Element type: " + elementType + " with token count: " + elementTypeTokens.length);
+        String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+
+        if(nativeElements.contains(itemType)){
+            return null;
+        }
+        NodeList nodeList = document.getElementsByTagName("*");
+        for(int j = 0; j < nodeList.getLength(); j++) {
+            if (!nodeList.item(j).getNodeName().contains("element") &&
+                    nodeList.item(j).hasAttributes() &&
+                    nodeList.item(j).getAttributes().getLength() > 0 &&
+                    nodeList.item(j).getAttributes().getNamedItem("name") != null &&
+                    nodeList.item(j).getAttributes().getNamedItem("name").getTextContent().equals(itemType)) {
+                Logger.info("Found element type: " +
+                                nodeList.item(j).getAttributes().getNamedItem("name") +
+                                " element node " +
+                                nodeList.item(j).getNodeName()
+                );
+                Logger.info("We are ignoring xs:element in this search because we are assuming only 1 global element");
+                return nodeList.item(j);
+            }
+        }
+        return null;
+
+    }
+
+    private static <T> void addToJsonObject(JSONObject jsonObject, String name, T object){
+        try {
+            jsonObject.put(name, object);
+        } catch(JSONException ex){
+            Logger.error("We just errored out: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+
+    }
+
+    private static<T> T getJsonObject(JSONObject jsonObject, String name){
+        try {
+            return (T)jsonObject.get(name);
+        } catch(JSONException ex){
+            Logger.error("We just errored out: " + ex.getMessage());
+            ex.printStackTrace();
+            return null;
+        }
+
+    }
+
+
+    public static ObjectNode buildJsonResponse(String type, String message) {
+        ObjectNode wrapper = Json.newObject();
+        ObjectNode msg = Json.newObject();
+        msg.put("message", message);
+        wrapper.put(type, msg);
+        return wrapper;
+    }
+
+    public static boolean createFileInCarina(ZipEntry file, StringWriter data, User user){
+        try {
+            String parentDirectories = file.getName().substring(0, file.getName().lastIndexOf("/"));
+            if(!Files.isDirectory(getCarinaDirectory(user.tenant).resolve(Paths.get(parentDirectories)))){
+                Files.createDirectories(getCarinaDirectory(user.tenant).resolve(Paths.get(parentDirectories)));
+            }
+            return Files.write(getCarinaDirectory(user.tenant).resolve(file.getName()), Arrays.asList(data.toString().split("\n"))) != null;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public static Path getCarinaDirectory(String tenant){
+        return Paths.get("/tmp", tenant);
+
+    }
+
+    public static Path getReposeConfigDirectory(String tenant) throws IOException{
+        try {
+            return Files.createDirectories(getReposeImageDirectory(tenant).resolve("repose_config"));
+        } catch (IOException e) {
+            Logger.error("Unable to create repose config directory " + e.getLocalizedMessage());
+            throw e;
+        }
+    }
+
+    public static Path getReposeImageDirectory(String tenant) throws IOException{
+        try {
+            return Files.createDirectories(getCarinaDirectory(tenant).resolve("repose_image"));
+        } catch (IOException e) {
+            Logger.error("Unable to create repose image directory " + e.getLocalizedMessage());
+            throw e;
+        }
+    }
+
+    public static Path getOriginImageDirectory(String tenant) throws IOException{
+        try {
+            return Files.createDirectories(getCarinaDirectory(tenant).resolve("origin_image"));
+        } catch (IOException e) {
+            Logger.error("Unable to create origin image directory " + e.getLocalizedMessage());
+            throw e;
+        }
+    }
+
+    public static Path getCarinaDirectoryWithCluster(String tenant, String cluster){
+        return getCarinaDirectory(tenant).resolve(cluster);
+
+    }
+
+    public static String getUserApiKey(User user) {
+        //get user
+        Logger.info("Get api key for " + user.userid);
+        User serviceAccountUser = null;
+        try {
+            serviceAccountUser = new Auth().getUser(
+                    play.Play.application().configuration().getString("service.account.name"),
+                    play.Play.application().configuration().getString("service.account.password"));
+        } catch(NotFoundException nfe) {
+            Logger.error("Service Account user not found.  Check the configuration");
+        } catch(InternalServerException ise) {
+            Logger.error("Internet is down forever.");
+        }
+        if(serviceAccountUser != null) {
+            try{
+                Logger.info("Service account user found: " + serviceAccountUser);
+                return new Auth().getUserApiKey(
+                        serviceAccountUser.token,
+                        user.userid
+                );
+            } catch(NotFoundException nfe) {
+                Logger.error("Service account user not found.  Check the configuration");
+            } catch(InternalServerException ise) {
+                Logger.error("Internet is down forever.");
+            }
+        } else {
+            return null;
+        }
+        return null;
+    }
+
 }

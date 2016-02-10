@@ -28,6 +28,7 @@ public class EncryptionDecryptionAES {
 
     public static String encrypt(String plainText)
             throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Logger.info("encrypt: " + plainText);
         byte[] plainTextByte = plainText.getBytes();
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
         byte[] encryptedByte = cipher.doFinal(plainTextByte);
@@ -38,6 +39,7 @@ public class EncryptionDecryptionAES {
 
     public static String decrypt(String encryptedText)
             throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Logger.info("decrypt: " + encryptedText);
         Base64.Decoder decoder = Base64.getDecoder();
         byte[] encryptedTextByte = decoder.decode(encryptedText);
         cipher.init(Cipher.DECRYPT_MODE, secretKey);

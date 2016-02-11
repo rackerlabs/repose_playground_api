@@ -1,22 +1,12 @@
-# Dockerfile for Repose (www.openrepose.org)
+# Base the container off of the official Microsoft ASP.NET container, version 1.0.0-rc1-update1
+FROM ingensi/play-framework:latest
 
-FROM ubuntu
+# Copy the website into the container
+COPY . /app
+WORKDIR /app
 
-MAINTAINER Jenny Vo (jenny.vo@rackspace.com)
+# Make port 5000 accessible on the container
+EXPOSE 9000/tcp
 
-ENV REPOSE_VER 7.3.0.0
-RUN apt-get install -y wget
-RUN wget -O - http://repo.openrepose.org/debian/pubkey.gpg | apt-key add - && echo "deb http://repo.openrepose.org/debian stable main" > /etc/apt/sources.list.d/openrepose.list
-RUN apt-get update && apt-get install -y repose-valve=${REPOSE_VER} repose-filter-bundle=${REPOSE_VER} repose-extensions-filter-bundle=${REPOSE_VER}
-
-# Remove default Repose configuration files
-RUN rm /etc/repose/*.cfg.xml
-
-# Copy our configuration files in.
-ADD ./repose_configs/*.cfg.xml /etc/repose/
-
-# Expose Port 8000 -- Change this to use other ports for Repose
-EXPOSE 8000
-
-# Start Repose
-CMD java -jar /usr/share/repose/repose-valve.jar
+# Run the webserver when the container is started
+# ENTRYPOINT ["activator", "run"]

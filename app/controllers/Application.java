@@ -3,16 +3,10 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.common.collect.ImmutableSet;
-import com.spotify.docker.client.*;
-import com.spotify.docker.client.messages.*;
 import exceptions.InternalServerException;
 import helpers.Helpers;
-import models.Carina;
-import models.Cluster;
 import models.Filter;
 import models.User;
-import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -36,17 +30,10 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.*;
-import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.io.StringWriter;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class Application extends Controller {
 
@@ -256,9 +243,9 @@ public class Application extends Controller {
 
             Logger.info("Create new docker instance");
             try {
-                createOriginContainer(user, id);
-                createReposeContainer(user, filters, id);
-                return ok(Json.parse("{\"message\": \"success\"}"));
+                new models.Container().createOriginContainer(user, id);
+                String reposeId = new models.Container().createReposeContainer(user, filters, id);
+                return ok(Json.parse("{\"message\": \"success\",\"id\": \"" + reposeId + "\"}"));
             } catch (InternalServerException e) {
                 return internalServerError(e.getLocalizedMessage());
             }
@@ -766,227 +753,6 @@ public class Application extends Controller {
 
     private void printDocument(Document doc) {
         Logger.info(convertDocumentToString(doc));
-    }
-
-    private void createOriginContainer(User user, String version) throws InternalServerException {
-        Logger.debug("create origin instance " + user);
-
-        Cluster cluster = null;
-        try {
-            cluster = new Carina().getClusterByName(
-                    play.Play.application().configuration().getString("user.cluster.name"), user, false, true);
-        } catch (InternalServerException e) {
-            e.printStackTrace();
-            throw new InternalServerException(e.getMessage());
-        }
-
-
-        try {
-            final DockerClient docker = DefaultDockerClient.builder()
-                    .uri(URI.create(cluster.getUri()))
-                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
-                    .build();
-
-            //write docker file for new image
-            try {
-                Files.copy(
-                        play.Play.application().path().toPath().resolve("carina").
-                                resolve("origin-image").resolve("Dockerfile"),
-                        Helpers.getOriginImageDirectory(user.tenant).resolve("Dockerfile"),
-                        StandardCopyOption.REPLACE_EXISTING);
-                Files.copy(
-                        play.Play.application().path().toPath().resolve("carina").
-                                resolve("origin-image").resolve("backend.js"),
-                        Helpers.getOriginImageDirectory(user.tenant).resolve("backend.js"),
-                        StandardCopyOption.REPLACE_EXISTING);
-                Files.copy(
-                        play.Play.application().path().toPath().resolve("carina").
-                                resolve("origin-image").resolve("package.json"),
-                        Helpers.getOriginImageDirectory(user.tenant).resolve("package.json"),
-                        StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new InternalServerException(e.getLocalizedMessage());
-            }
-
-            //remove all containers with image
-            List<Container> containerList = docker.listContainers(
-                    DockerClient.ListContainersParam.allContainers());
-
-            Predicate<Container> hasImage = c -> c.image().equals("repose-origin-" + user.tenant + "-" + version);
-
-            List<Container> containersToRemove = containerList.stream().filter(hasImage).collect(Collectors.toList());
-            containersToRemove.forEach(container1 -> {
-                try {
-                    docker.killContainer(container1.id());
-                    Logger.info("removed " + container1.id());
-                }catch(DockerException | InterruptedException de ){
-                    Logger.error("failed to stop " + de.getLocalizedMessage());
-                }
-                try {
-                    docker.removeContainer(container1.id());
-                    Logger.info("removed " + container1.id());
-                }catch(DockerException | InterruptedException de ){
-                    Logger.error("failed to stop " + de.getLocalizedMessage());
-                }
-            });
-
-            //build an image with origin service
-            try {
-                Logger.info("Build image with " + cluster + " at " + DateTime.now());
-                try {
-                    docker.removeImage("repose-origin-" + user.tenant + "-" + version, true, true);
-                } catch(ImageNotFoundException infe) {
-                    Logger.warn("Image was not found.  Should be ok. " +
-                            infe.getImage() + " " + infe.getLocalizedMessage());
-                } catch(DockerRequestException dre) {
-                    Logger.warn("Failed request. " +
-                            dre.message() + " " + dre.getLocalizedMessage());
-                }
-                docker.build(
-                        Paths.get(Helpers.getOriginImageDirectory(user.tenant).toString()),
-                        "repose-origin-" + user.tenant + "-" + version);
-
-                ContainerConfig containerConfig = ContainerConfig.builder()
-                        .image("repose-origin-" + user.tenant + "-" + version)
-                        .build();
-                //name has underscores because of ip addy
-                ContainerCreation creation = docker.createContainer(containerConfig,
-                        "repose-origin-" + user.tenant + "-" + version.replace('.','-'));
-                final String id = creation.id();
-                docker.startContainer(id);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } catch (DockerCertificateException | DockerException | InterruptedException e) {
-            e.printStackTrace();
-            throw new InternalServerException(e.getMessage());
-        }
-    }
-
-    /**
-     * Spin up a repose container
-     * @param user
-     * @param filters
-     * @param version
-     */
-    private void createReposeContainer(User user, Map<String, String> filters, String version) throws InternalServerException {
-        Logger.debug("create repose instance " + user + " and version: " + version);
-
-        Cluster cluster = null;
-        try {
-            cluster = new Carina().getClusterByName(
-                    play.Play.application().configuration().getString("user.cluster.name"), user, false, true);
-        } catch (InternalServerException e) {
-            e.printStackTrace();
-            throw new InternalServerException(e.getMessage());
-        }
-
-        try {
-            final DockerClient docker = DefaultDockerClient.builder()
-                    .uri(URI.create(cluster.getUri()))
-                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
-                    .build();
-            //write our filters to repose config directory
-            filters.entrySet().stream().forEach(
-                    e -> {
-                        try {
-                            File file = Paths.get(
-                                    Helpers.getReposeConfigDirectory(user.tenant).toString(),
-                                    e.getKey()).toFile();
-                            FileWriter fileWriter = new FileWriter(file);
-                            fileWriter.write(e.getValue());
-                            fileWriter.close();
-                        } catch (IOException ioe) {
-                            Logger.error("Unable to write " + e.getKey());
-                        }
-                    }
-            );
-
-            //write docker file for new image
-            try {
-                Files.copy(
-                        play.Play.application().path().toPath().resolve("carina").
-                                resolve("repose-image").resolve("Dockerfile"),
-                        Helpers.getReposeImageDirectory(user.tenant).resolve("Dockerfile"),
-                        StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw new InternalServerException(e.getLocalizedMessage());
-            }
-
-            //remove all containers with image
-            List<Container> containerList = docker.listContainers(
-                    DockerClient.ListContainersParam.allContainers());
-
-            Predicate<Container> hasImage = c -> c.image().equals("repose-" + user.tenant + "-" + version);
-
-            List<Container> containersToRemove = containerList.stream().filter(hasImage).collect(Collectors.toList());
-            containersToRemove.forEach(container1 -> {
-                try {
-                    docker.killContainer(container1.id());
-                    Logger.info("removed " + container1.id());
-                }catch(DockerException | InterruptedException de ){
-                    Logger.error("failed to stop " + de.getLocalizedMessage());
-                }
-                try {
-                    docker.removeContainer(container1.id());
-                    Logger.info("removed " + container1.id());
-                }catch(DockerException | InterruptedException de ){
-                    Logger.error("failed to stop " + de.getLocalizedMessage());
-                }
-            });
-
-            //build an image with repose
-            try {
-                Logger.info("Build image with " + cluster + " at " + DateTime.now());
-                try {
-                    docker.removeImage("repose-" + user.tenant + "-" + version, true, true);
-                } catch(ImageNotFoundException infe) {
-                    Logger.warn("Image was not found.  Should be ok. " +
-                            infe.getImage() + " " + infe.getLocalizedMessage());
-                } catch(DockerRequestException dre) {
-                    Logger.warn("Failed request. " +
-                            dre.message() + " " + dre.getLocalizedMessage());
-                }
-                docker.build(
-                        Paths.get(Helpers.getReposeImageDirectory(user.tenant).toString()),
-                        "repose-" + user.tenant + "-" + version);
-
-                Map<String, List<PortBinding>> portBindings = new HashMap<String, List<PortBinding>>();
-
-                PortBinding randomPort = PortBinding.randomPort("0.0.0.0");
-
-                portBindings.put("8080/tcp", new ArrayList<PortBinding>() {
-                    {
-                        add(randomPort);
-                    }
-                });
-
-                //link by name
-                HostConfig hostConfig = HostConfig.builder().
-                        portBindings(portBindings).
-                        links("repose-origin-" + user.tenant + "-" + version.replace('.', '-')).
-                        build();
-
-                ContainerConfig containerConfig = ContainerConfig.builder()
-                        .image("repose-" + user.tenant + "-" + version)
-                        .hostConfig(hostConfig).exposedPorts(ImmutableSet.of(randomPort.hostPort()))
-                        .build();
-                ContainerCreation creation = docker.createContainer(containerConfig,
-                        "repose-" + user.tenant + "-" + version.replace('.','_'));
-                final String id = creation.id();
-                docker.startContainer(id);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new InternalServerException(e.getMessage());
-            }
-        } catch (DockerCertificateException | DockerException | InterruptedException e) {
-            e.printStackTrace();
-            throw new InternalServerException(e.getMessage());
-        }
     }
 }
 

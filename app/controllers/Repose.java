@@ -9,6 +9,7 @@ import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerInfo;
 import com.spotify.docker.client.messages.PortBinding;
 import exceptions.InternalServerException;
+import exceptions.NotFoundException;
 import models.Carina;
 import models.Cluster;
 import models.Region;
@@ -20,14 +21,17 @@ import play.libs.ws.WS;
 import play.libs.ws.WSRequest;
 import play.libs.ws.WSResponse;
 import play.mvc.Controller;
+import play.mvc.Http;
 import play.mvc.Result;
 
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class Repose extends Controller {
 
@@ -193,7 +197,7 @@ public class Repose extends Controller {
     }
 
     /**
-     * Retrieve configuratiosn for repose id
+     * Retrieve configurations for repose id
      *
      * Retrieval is done in xml form, which can then be either zipped up or sent across wrapped in json object
      * @param id
@@ -220,6 +224,57 @@ public class Repose extends Controller {
             }
         }
     }
+
+    /**
+     * Upload configurations for repose id and start repose instance
+     *
+     * Retrieval is done in xml form, which can then be either zipped up or sent across wrapped in json object
+     * @param id
+     * @return
+     */
+    public Result uploadReposeConfigs(String id){
+        Logger.debug("In upload repose configs controller");
+
+        Http.MultipartFormData body = request().body().asMultipartFormData();
+
+        String token = request().getHeader("Token");
+        Logger.info("Check the user for " + token);
+        Logger.info("The return user is " + User.findByToken(token));
+        //check if expired
+        if(!User.isValid(token))
+            return unauthorized();
+        else
+        {
+            //get user by token.
+            User user = User.findByToken(token);
+
+            Logger.info("Create new docker instance");
+            try {
+                new models.Container().createOriginContainer(user, id);
+                String reposeId = new models.Container().createReposeContainer(user, uploadConfigurations(user, id, body), id);
+                return ok(Json.parse("{\"message\": \"success\",\"id\": \"" + reposeId + "\"}"));
+            } catch (NotFoundException e) {
+                return badRequest(e.getLocalizedMessage());
+            } catch (InternalServerException e) {
+                return internalServerError(e.getLocalizedMessage());
+            }
+
+        }
+    }
+
+    private Map<String, String> uploadConfigurations(User user, String reposeId, Http.MultipartFormData body)
+            throws NotFoundException {
+        if(body.getFiles() != null && body.getFiles().size() > 0) {
+            //get the first one.  others don't matter since it's a single file upload
+            Http.MultipartFormData.FilePart reposeZip = body.getFiles().get(0);
+            Logger.info("get file for: " + reposeZip.getFile().getAbsolutePath());
+            //TODO: get filter map and update system-model destination, replace log4j, and container.cfg.xml
+            return unzip(reposeZip.getFile());
+        }
+
+        throw new exceptions.NotFoundException("No zip files");
+    }
+
 
     /***
      * Get cluster by name (that saves to /tmp/tenant)
@@ -471,7 +526,9 @@ public class Repose extends Controller {
                                                 "request",
                                                 new ArrayList<String>() {
                                                     {
-                                                        add(entry);
+                                                        add(entry.substring(
+                                                                entry.indexOf("org.apache.http.wire -  >>") +
+                                                                        "org.apache.http.wire -  ".length()));
                                                     }
                                                 }
                                         );
@@ -485,7 +542,9 @@ public class Repose extends Controller {
                         Map<String,List<String>> requestResponseLogs =
                                 ((List<Map<String, List<String>>>)debugMessageMap.get("externalRequests")).
                                         get(externalRequestsSize - 1);
-                        requestResponseLogs.get("request").add(entry);
+                        requestResponseLogs.get("request").add(
+                                entry.substring(entry.indexOf("org.apache.http.wire -  >>") +
+                                        "org.apache.http.wire -  ".length()));
 
                         //Logger.info("request logs entry: " + requestLogs.size() + " and last entry: " + requestLogs.get(requestLogs.size() - 1));
                         //String request = requestLogs.get(requestLogs.size() -1).concat("\n").concat(entry);
@@ -508,7 +567,9 @@ public class Repose extends Controller {
                                         get(externalRequestsSize - 1);
                         requestResponseLogs.put("response",new ArrayList<String>() {
                             {
-                                add(entry);
+                                add(entry.substring(
+                                        entry.indexOf("org.apache.http.wire -  <<") +
+                                                "org.apache.http.wire -  ".length()));
                             }
                         });
 
@@ -520,7 +581,9 @@ public class Repose extends Controller {
                         Map<String,List<String>> requestResponseLogs =
                                 ((List<Map<String, List<String>>>)debugMessageMap.get("externalRequests")).
                                         get(externalRequestsSize - 1);
-                        requestResponseLogs.get("response").add(entry);
+                        requestResponseLogs.get("response").add(
+                                entry.substring(entry.indexOf("org.apache.http.wire -  <<") +
+                                        "org.apache.http.wire -  ".length()));
 
                     }
                 }
@@ -560,6 +623,31 @@ public class Repose extends Controller {
                 containerId, command,
                 DockerClient.ExecCreateParam.attachStdout(),
                 DockerClient.ExecCreateParam.attachStderr());
+    }
+
+    private Map<String, String> unzip(File zippedFile) {
+        Logger.info("unzip " + zippedFile.getName());
+        Map<String, String> filterXml = new HashMap<String, String>();
+        try {
+            InputStream inputStream = new FileInputStream(zippedFile);
+            ZipInputStream zis = new ZipInputStream(inputStream);
+            ZipEntry zipEntry;
+            StringBuilder s = new StringBuilder();
+            byte[] buffer = new byte[1024];
+            int read = 0;
+            while ((zipEntry = zis.getNextEntry())!= null) {
+                Logger.info("read " + zipEntry.getName());
+                while ((read = zis.read(buffer, 0, 1024)) >= 0) {
+                    s.append(new String(buffer, 0, read));
+                }
+                String[] zipEntryTokens = zipEntry.getName().split(Pattern.quote("/"));
+                filterXml.put(zipEntryTokens[zipEntryTokens.length - 1], s.toString());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return filterXml;
     }
 }
 

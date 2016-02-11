@@ -18,6 +18,7 @@ GET        /app/auth                                    controllers.Login.index(
 # Reposes
 GET        /app/repose/list                             controllers.Repose.list()
 GET        /app/repose/:id/configurations               controllers.Repose.configurations(id)
+POST       /app/repose/:id/upload                       controllers.Repose.uploadReposeConfigs(id)
 POST       /app/repose/test/:id                         controllers.Repose.test(id)
 GET        /app/repose/stop/:id                         controllers.Repose.stop(id)
 GET        /app/repose/start/:id                        controllers.Repose.start(id)

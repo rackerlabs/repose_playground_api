@@ -632,10 +632,10 @@ public class Repose extends Controller {
             InputStream inputStream = new FileInputStream(zippedFile);
             ZipInputStream zis = new ZipInputStream(inputStream);
             ZipEntry zipEntry;
-            StringBuilder s = new StringBuilder();
             byte[] buffer = new byte[1024];
             int read = 0;
             while ((zipEntry = zis.getNextEntry())!= null) {
+                StringBuilder s = new StringBuilder();
                 Logger.info("read " + zipEntry.getName());
                 while ((read = zis.read(buffer, 0, 1024)) >= 0) {
                     s.append(new String(buffer, 0, read));

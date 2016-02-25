@@ -5,4 +5,4 @@ frontend:
   links:
    - backend
 backend:
-  build: repose_playground_backend/
+  image: my-first-app:1.0-SNAPSHOT

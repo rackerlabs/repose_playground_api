@@ -11,9 +11,7 @@ import helpers.Helpers;
 import org.joda.time.DateTime;
 import play.Logger;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -71,11 +69,23 @@ public class Container {
 
             //write docker file for new image
             try {
+                Logger.debug("Update repose version in dockerfile");
+
                 Files.copy(
                         play.Play.application().path().toPath().resolve("carina").
                                 resolve("repose-image").resolve("Dockerfile"),
                         Helpers.getReposeImageDirectory(user.tenant).resolve("Dockerfile"),
                         StandardCopyOption.REPLACE_EXISTING);
+
+                List<String> dockerfileLines = Files.readAllLines(
+                        Helpers.getReposeImageDirectory(user.tenant).resolve("Dockerfile"));
+                for(int dockerfileLineCount = 0; dockerfileLineCount < dockerfileLines.size(); dockerfileLineCount ++) {
+                    if(dockerfileLines.get(dockerfileLineCount).contains("REPOSE_VERSION")){
+                        dockerfileLines.set(dockerfileLineCount,
+                                dockerfileLines.get(dockerfileLineCount).replace("REPOSE_VERSION", version));
+                    }
+                }
+                Files.write(Helpers.getReposeImageDirectory(user.tenant).resolve("Dockerfile"), dockerfileLines);
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new InternalServerException(e.getLocalizedMessage());

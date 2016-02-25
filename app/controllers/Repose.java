@@ -10,6 +10,7 @@ import com.spotify.docker.client.messages.ContainerInfo;
 import com.spotify.docker.client.messages.PortBinding;
 import exceptions.InternalServerException;
 import exceptions.NotFoundException;
+import helpers.Helpers;
 import models.Carina;
 import models.Cluster;
 import models.Region;
@@ -262,14 +263,30 @@ public class Repose extends Controller {
         }
     }
 
-    private Map<String, String> uploadConfigurations(User user, String reposeId, Http.MultipartFormData body)
+    private Map<String, String> uploadConfigurations(User user, String reposeVersion, Http.MultipartFormData body)
             throws NotFoundException {
         if(body.getFiles() != null && body.getFiles().size() > 0) {
+            int majorVersion = Integer.parseInt(reposeVersion.split(Pattern.quote("."))[0]);
             //get the first one.  others don't matter since it's a single file upload
             Http.MultipartFormData.FilePart reposeZip = body.getFiles().get(0);
             Logger.info("get file for: " + reposeZip.getFile().getAbsolutePath());
+
             //TODO: get filter map and update system-model destination, replace log4j, and container.cfg.xml
-            return unzip(reposeZip.getFile());
+            Map<String, String> filterXml = unzip(reposeZip.getFile());
+            filterXml.keySet().forEach(name -> {
+                if(name.equals("system-model.cfg.xml")){
+                    Logger.info("update system model listening node and destination");
+                    String content = filterXml.get(name);
+                    filterXml.put(name, Helpers.updateSystemModelXml(user, reposeVersion, content));
+                } else if (name.equals("container.cfg.xml")) {
+                    Logger.info("update container config");
+                    filterXml.put(name, Helpers.generateContainerXml(majorVersion));
+                } else if (name.equals("log4j2.xml") || name.equals("log4j.properties")){
+                    filterXml.put(name, Helpers.generateLoggingXml(majorVersion));
+                }
+            });
+
+            return  filterXml;
         }
 
         throw new exceptions.NotFoundException("No zip files");

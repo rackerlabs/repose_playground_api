@@ -1,0 +1,8 @@
+frontend:
+  build: repose-playground/
+  ports:
+   - "80:80"
+  links:
+   - backend
+backend:
+  build: repose_playground_backend/

@@ -45,7 +45,7 @@ Retrieves current user's auth information
 User's home page.  Used to view created (running and stopped) Repose instances
 
 ````
-GET /app/repose         controllers.Repose.list()
+GET /app/repose/list    controllers.Repose.list()
 ````
 
 Retrieve all created Repose instances
@@ -55,22 +55,22 @@ Retrieve all created Repose instances
 * Retrieves metadata for each container from the local cache (time created, version, filter list, last perf link) mapped by container id
 
 ````
-PUT /app/repose/:id     controllers.Repose.edit()
+GET /app/repose/stop/:id     controllers.Repose.stop()
 ````
 
-Update created Repose instance running status (start/stop)
+Update created Repose instance running status to stop
 
 * Retrieve repose instance id from local cache
 * Update status
 
 ````
-DELETE /app/repose/:id  controllers.Repose.delete()
+GET /app/repose/start/:id     controllers.Repose.start()
 ````
 
-Delete created Repose instance
+Update created Repose instance running status to start
 
-* Delete repose instance id from cache
-* Remove running Repose container from Carina
+* Retrieve repose instance id from local cache
+* Update status
 
 #### Create instance page
 
@@ -98,7 +98,7 @@ Workflow:
 15. Start Repose container and return container id
 
 ````
-POST /app/repose        controllers.Repose.create()
+POST /app/versions/id        controllers.Repose.build(id)
 ````
 
 Start new Repose instance
@@ -117,7 +117,7 @@ Required request data should have JSON list of all required json filter requests
 * Sets instance version in the local cache to 1
 
 ````
-GET /app/version
+GET /app/versions
 ````
 
 Lists all available versions
@@ -125,7 +125,7 @@ Lists all available versions
 * Retrieves all Repose versions from github
 
 ````
-GET /app/version/:id
+GET /app/versions/:id/components
 ````
 
 Lists all available filters for this version
@@ -133,7 +133,7 @@ Lists all available filters for this version
 * Retrieves all Repose filters for the specified version from maven
 
 ````
-GET /app/version/:id/:component_id
+GET /app/version/:id/components/:componentId
 ````
 
 Lists json metadata for the specified filter
@@ -146,35 +146,16 @@ Lists json metadata for the specified filter
 Instance detail page.  Shows repose instance status, version, filter list, configurations used, ability to make a sample request, and ability to start a small load test
 
 ````
-GET /app/repose/:id     controllers.Repose.index()
+GET /app/repose/:id/configurations     controllers.Repose.configurations(id)
 ````
 
-Retrieves high level details for current Repose instance
-
-* Retrieves repose instance id from local cache
-* If local cache does not have container id, reaches out to Carina to get the status of the container (retrieves by label)
-* Returns:
-  * Repose version
-  * Filter list
-  * Running configurations
-  * Status
-  * Version list
+Retrieves running configurations for current Repose instance
 
 ````
 GET /app/repose/:id/filters controllers.ReposeFilters.list()
 ````
 
 Retrieves filters from created Repose instance and its appropriate configurations (in xml format) - for the latest version
-
-* Retrieves repose instance id from local cache
-* Retrieves list of filters from system model on repose container
-* Retrieves appropriate xml configurations for each filter
-
-````
-GET /app/repose/:id/filters/previous/:pid controllers.ReposeFilters.list()
-````
-
-Retrieves filters from created Repose instance and its appropriate configurations (in xml format) - for the specified version
 
 * Retrieves repose instance id from local cache
 * Retrieves list of filters from system model on repose container

@@ -22,6 +22,7 @@ libraryDependencies += "com.spotify" % "docker-client" % "3.5.1"
 routesGenerator := InjectedRoutesGenerator
 
 resolvers += "Repose OSS Snapshots" at "https://maven.research.rackspacecloud.com/content/repositories/releases"
+resolvers += Resolver.url("Typesafe Ivy releases", url("https://repo.typesafe.com/typesafe/ivy-releases"))(Resolver.ivyStylePatterns)
 
 // fork in run := true
 fork in run := false

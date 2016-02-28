@@ -61,6 +61,10 @@ public class Application extends Controller {
                     new Function<WSResponse, Result>() {
                         @Override
                         public Result apply(WSResponse wsResponse) throws Throwable {
+                            String filterListString = play.Play.application().configuration().getString("filter.list");
+                            List<String> filterList = new ArrayList<String>();
+                            if(filterListString != null)
+                                filterList = Arrays.asList(filterListString);
                             List<String> componentList = new ArrayList<String>();
                             ObjectMapper mapper = new ObjectMapper();
                             Document document = wsResponse.asXml();
@@ -68,11 +72,11 @@ public class Application extends Controller {
                             for (int i = 0; i < nodeList.getLength(); i++) {
                                 Node node = nodeList.item(i);
                                 if (node.getNodeType() == Node.ELEMENT_NODE) {
-                                    // do something with the current element
                                     for (int j = 0; j < node.getChildNodes().getLength(); j++) {
                                         Node artifactId = node.getChildNodes().item(j);
                                         if (artifactId.getNodeName() == "artifactId") {
-                                            componentList.add(artifactId.getTextContent());
+                                            if(filterList.isEmpty() || (!filterList.isEmpty() && filterList.contains(artifactId.getTextContent())))
+                                                componentList.add(artifactId.getTextContent());
                                         }
                                     }
                                 }

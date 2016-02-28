@@ -1,6 +1,10 @@
 This is your new Play application
 =================================
 
+[![Build Status](https://travis-ci.org/rackerlabs/repose_playground_api.svg)](https://travis-ci.org/rackerlabs/repose_playground_api)
+[![codecov.io](http://codecov.io/github/rackerlabs/repose_playground_api/coverage.svg?branch=add-unit-tests)](http://codecov.io/github/rackerlabs/repose_playground_api?branch=add-unit-tests)
+
+
 This file will be packaged with your application, when using `activator dist`.
 
 ### Backend application actions

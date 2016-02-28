@@ -109,6 +109,7 @@ public class User extends Model {
                 .findUnique();
     }
 
+    @Deprecated
     public static User findByToken(String token) {
         return find
                 .where()
@@ -116,6 +117,7 @@ public class User extends Model {
                 .findUnique();
     }
 
+    @Deprecated
     public static boolean isValid(String token){
         User user = findByToken(token);
         return user != null && user.expireDate.isAfterNow();
@@ -123,7 +125,6 @@ public class User extends Model {
 
     public static byte[] getSha512(String value) {
         try {
-            Logger.info("sha-512: " + value);
             return MessageDigest.getInstance("SHA-512").digest(value.getBytes("UTF-8"));
         }
         catch (NoSuchAlgorithmException e) {

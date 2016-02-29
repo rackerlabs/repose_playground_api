@@ -17,6 +17,7 @@ libraryDependencies += "org.json" % "json" % "20090211"
 libraryDependencies += "com.spotify" % "docker-client" % "3.5.1"
 libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
+jacoco.settings
 
 // Play provides two styles of routers, one expects its actions to be injected, the
 // other, legacy style, accesses its actions statically.

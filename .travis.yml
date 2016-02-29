@@ -7,7 +7,7 @@ before_script:
 script:
   - sbt clean jacoco:cover
 after_success: 
-  - codecov
+  - bash <(curl -s https://codecov.io/bash)
 cache:
   directories:
     - $HOME/.ivy2/cache

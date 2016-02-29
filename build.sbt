@@ -1,3 +1,5 @@
+import de.johoop.jacoco4sbt.{ScalaHTMLReport, XMLReport}
+
 name := """repose-playground"""
 
 version := "1.0-SNAPSHOT"
@@ -18,6 +20,9 @@ libraryDependencies += "com.spotify" % "docker-client" % "3.5.1"
 libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
 jacoco.settings
+jacoco.reportFormats in jacoco.Config := Seq(
+  XMLReport(encoding = "utf-8"),
+  ScalaHTMLReport(withBranchCoverage = true))
 
 // Play provides two styles of routers, one expects its actions to be injected, the
 // other, legacy style, accesses its actions statically.

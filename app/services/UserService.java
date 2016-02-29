@@ -2,25 +2,26 @@ package services;
 
 import com.google.inject.Inject;
 import models.User;
-import repositories.UserRepository;
+import repositories.IUserRepository;
 
 /**
  * Created by dimi5963 on 2/28/16.
  */
 public class UserService implements IUserService{
-    private final UserRepository userRepository;
+    private final IUserRepository IUserRepository;
 
     @Inject
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    public UserService(IUserRepository IUserRepository) {
+        this.IUserRepository = IUserRepository;
     }
 
     public boolean isValid(String token) {
-        return userRepository.isValid(token);
+        User user = findByToken(token);
+        return user != null && user.expireDate.isAfterNow();
     }
 
     @Override
     public User findByToken(String token) {
-        return userRepository.findByToken(token);
+        return IUserRepository.findByToken(token);
     }
 }

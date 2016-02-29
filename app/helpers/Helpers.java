@@ -1,8 +1,6 @@
 package helpers;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import exceptions.InternalServerException;
-import exceptions.NotFoundException;
 import models.Filter;
 import models.User;
 import org.json.JSONArray;
@@ -626,36 +624,6 @@ public class Helpers {
 
     }
 
-    public static String getUserApiKey(User user) {
-        //get user
-        Logger.info("Get api key for " + user.userid);
-        User serviceAccountUser = null;
-        try {
-            serviceAccountUser = new Auth().getUser(
-                    play.Play.application().configuration().getString("service.account.name"),
-                    play.Play.application().configuration().getString("service.account.password"));
-        } catch(NotFoundException nfe) {
-            Logger.error("Service Account user not found.  Check the configuration");
-        } catch(InternalServerException ise) {
-            Logger.error("Internet is down forever.");
-        }
-        if(serviceAccountUser != null) {
-            try{
-                Logger.info("Service account user found: " + serviceAccountUser);
-                return new Auth().getUserApiKey(
-                        serviceAccountUser.token,
-                        user.userid
-                );
-            } catch(NotFoundException nfe) {
-                Logger.error("Service account user not found.  Check the configuration");
-            } catch(InternalServerException ise) {
-                Logger.error("Internet is down forever.");
-            }
-        } else {
-            return null;
-        }
-        return null;
-    }
 
 
     public static String generateLoggingXml(int majorVersion) {

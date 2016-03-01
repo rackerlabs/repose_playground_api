@@ -82,14 +82,24 @@ public class Repose extends Controller {
         } else {
             //get user by token.
             User user = userService.findByToken(token);
+            if(user != null) {
+                try{
+                    ObjectNode response = JsonNodeFactory.instance.objectNode();
+                    if (reposeService.stopReposeInstance(user, id))
+                        response.put("message", "success");
+                    else
+                        response.put("message", "failed to stop");
+                    return ok(Json.toJson(response));
+                } catch(InternalServerException ise) {
+                    ObjectNode response = JsonNodeFactory.instance.objectNode();
+                    response.put("message", ise.getLocalizedMessage());
+                    return internalServerError(Json.toJson(response));
+                }
 
-            try{
-                if(reposeService.stopReposeInstance(user, id))
-                    return ok(Json.toJson("{'message':'success'}"));
-                else
-                    return ok(Json.toJson("{'message': 'failed to stop'}"));
-            } catch(InternalServerException ise) {
-                return internalServerError(ise.getLocalizedMessage());
+            } else {
+                Logger.debug("The only way this could have happened is if token timeout between " +
+                        "previous check and now.  Unlikely but possible.");
+                return unauthorized();
             }
         }
     }
@@ -111,15 +121,27 @@ public class Repose extends Controller {
         } else {
             //get user by token.
             User user = userService.findByToken(token);
+            if (user != null) {
 
-            try{
-                if(reposeService.startReposeInstance(user, id))
-                    return ok(Json.toJson("{'message':'success'}"));
-                else
-                    return ok(Json.toJson("{'message': 'failed to start'}"));
-            } catch(InternalServerException ise) {
-                return internalServerError(ise.getLocalizedMessage());
+                try {
+                    ObjectNode response = JsonNodeFactory.instance.objectNode();
+                    if (reposeService.startReposeInstance(user, id))
+                        response.put("message", "success");
+                    else
+                        response.put("message", "failed to start");
+                    return ok(Json.toJson(response));
+                } catch (InternalServerException ise) {
+                    ObjectNode response = JsonNodeFactory.instance.objectNode();
+                    response.put("message", ise.getLocalizedMessage());
+                    return internalServerError(Json.toJson(response));
+                }
+
+            } else {
+                Logger.debug("The only way this could have happened is if token timeout between " +
+                        "previous check and now.  Unlikely but possible.");
+                return unauthorized();
             }
+
         }
     }
 }

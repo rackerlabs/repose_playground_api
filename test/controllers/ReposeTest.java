@@ -269,4 +269,487 @@ public class ReposeTest extends WithApplication {
             }
         });
     }
+
+    //test start repose instance
+
+    @Test
+    public void testStartSuccess() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+
+            //set up mock user
+            User user = new User();
+            user.setTenant("111");
+            user.setPassword("pass");
+            user.setToken("fake-token");
+            user.setUserid("1");
+            user.setUsername("fake-user");
+
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+            try {
+                when(reposeServiceMock.startReposeInstance(any(), anyString())).thenReturn(true);
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).start("1");
+            assertEquals(200, result.status());
+            assertEquals("{\"message\":\"success\"}", contentAsString(result));
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+            try {
+                verify(reposeServiceMock).startReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStartUnauthorized() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(false);
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).start("1");
+            assertEquals(401, result.status());
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, never()).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+
+            try {
+                verify(reposeServiceMock, never()).startReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStartNoToken() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(false);
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn(null);
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).start("1");
+            assertEquals(401, result.status());
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, never()).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+
+            try {
+                verify(reposeServiceMock, never()).startReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+
+    }
+
+    @Test
+    public void testStartNullUser() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            //set up mock user
+            User user = null;
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).start("1");
+            assertEquals(401, result.status());
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+
+            try {
+                verify(reposeServiceMock, never()).startReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStartFalse() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+
+            //set up mock user
+            User user = new User();
+            user.setTenant("111");
+            user.setPassword("pass");
+            user.setToken("fake-token");
+            user.setUserid("1");
+            user.setUsername("fake-user");
+
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+            try {
+                when(reposeServiceMock.startReposeInstance(any(), anyString())).thenReturn(false);
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).start("1");
+            assertEquals(200, result.status());
+            assertEquals("{\"message\":\"failed to start\"}", contentAsString(result));
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+            try {
+                verify(reposeServiceMock).startReposeInstance(any(), any());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStartInternalServerException() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            //set up mock user
+            User user = new User();
+            user.setTenant("111");
+            user.setPassword("pass");
+            user.setToken("fake-token");
+            user.setUserid("1");
+            user.setUsername("fake-user");
+
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+            try {
+                when(reposeServiceMock.startReposeInstance(any(), anyString()))
+                        .thenThrow(new InternalServerException("all the things!"));
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).start("1");
+            assertEquals(500, result.status());
+            assertEquals(contentAsString(result), "{\"message\":\"all the things!\"}");
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+            try {
+                verify(reposeServiceMock).startReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+
+    //test stop repose instance
+
+    @Test
+    public void testStopSuccess() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+
+            //set up mock user
+            User user = new User();
+            user.setTenant("111");
+            user.setPassword("pass");
+            user.setToken("fake-token");
+            user.setUserid("1");
+            user.setUsername("fake-user");
+
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+            try {
+                when(reposeServiceMock.stopReposeInstance(any(), anyString())).thenReturn(true);
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).stop("1");
+            assertEquals(200, result.status());
+            assertEquals("{\"message\":\"success\"}", contentAsString(result));
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+            try {
+                verify(reposeServiceMock).stopReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStopUnauthorized() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(false);
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).stop("1");
+            assertEquals(401, result.status());
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, never()).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+
+            try {
+                verify(reposeServiceMock, never()).stopReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStopNoToken() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(false);
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn(null);
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).stop("1");
+            assertEquals(401, result.status());
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, never()).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+
+            try {
+                verify(reposeServiceMock, never()).stopReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+
+    }
+
+    @Test
+    public void testStopNullUser() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            //set up mock user
+            User user = null;
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).stop("1");
+            assertEquals(401, result.status());
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+
+            try {
+                verify(reposeServiceMock, never()).stopReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStopFalse() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+
+            //set up mock user
+            User user = new User();
+            user.setTenant("111");
+            user.setPassword("pass");
+            user.setToken("fake-token");
+            user.setUserid("1");
+            user.setUsername("fake-user");
+
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+            try {
+                when(reposeServiceMock.stopReposeInstance(any(), anyString())).thenReturn(false);
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).stop("1");
+            assertEquals(200, result.status());
+            assertEquals("{\"message\":\"failed to stop\"}", contentAsString(result));
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+            try {
+                verify(reposeServiceMock).stopReposeInstance(any(), any());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testStopInternalServerException() {
+        running(fakeApplication(inMemoryDatabase("test")), () -> {
+            //set up mock user
+            User user = new User();
+            user.setTenant("111");
+            user.setPassword("pass");
+            user.setToken("fake-token");
+            user.setUserid("1");
+            user.setUsername("fake-user");
+
+
+            IUserService userServiceMock = mock(IUserService.class);
+            IReposeService reposeServiceMock = mock(IReposeService.class);
+
+            when(userServiceMock.isValid(anyString())).thenReturn(true);
+            when(userServiceMock.findByToken(anyString())).thenReturn(user);
+            try {
+                when(reposeServiceMock.stopReposeInstance(any(), anyString()))
+                        .thenThrow(new InternalServerException("all the things!"));
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+
+            Map<String, String> flashData = Collections.emptyMap();
+            Map<String, Object> argData = Collections.emptyMap();
+            RequestHeader header = mock(RequestHeader.class);
+            Http.Request request = mock(Http.Request.class);
+            when(request.getHeader("Token")).thenReturn("fake-token");
+            Http.Context context = new Http.Context(2L, header, request, flashData, flashData, argData);
+            Http.Context.current.set(context);
+
+            Result result = new Repose(userServiceMock, reposeServiceMock).stop("1");
+            assertEquals(500, result.status());
+            assertEquals(contentAsString(result), "{\"message\":\"all the things!\"}");
+
+            verify(userServiceMock).isValid(anyString());
+            verify(userServiceMock, times(1)).findByToken(anyString());
+            verify(request, times(1)).getHeader(anyString());
+            try {
+                verify(reposeServiceMock).stopReposeInstance(any(), anyString());
+            }catch(InternalServerException ise){
+                fail(ise.getLocalizedMessage());
+            }
+        });
+    }
 }

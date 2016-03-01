@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.inject.Inject;
 import com.spotify.docker.client.*;
-import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerInfo;
 import com.spotify.docker.client.messages.PortBinding;
 import exceptions.InternalServerException;
@@ -13,7 +13,7 @@ import exceptions.NotFoundException;
 import helpers.Helpers;
 import models.Carina;
 import models.Cluster;
-import models.Region;
+import models.Container;
 import models.User;
 import play.Logger;
 import play.libs.F;
@@ -24,6 +24,8 @@ import play.libs.ws.WSResponse;
 import play.mvc.Controller;
 import play.mvc.Http;
 import play.mvc.Result;
+import services.IReposeService;
+import services.IUserService;
 
 import java.io.*;
 import java.net.URI;
@@ -36,7 +38,15 @@ import java.util.zip.ZipInputStream;
 
 public class Repose extends Controller {
 
-    private static Region region = Region.DFW;
+    private final IUserService userService;
+    private final IReposeService reposeService;
+
+    @Inject
+    public Repose(IUserService userService, IReposeService reposeService){
+
+        this.userService = userService;
+        this.reposeService = reposeService;
+    }
 
     /***
      * Repose list will return a list of running and stopped repose instances
@@ -50,52 +60,26 @@ public class Repose extends Controller {
      * @return
      */
     public Result list() {
-
+        Logger.debug("Get repose list");
         String token = request().getHeader("Token");
-        Logger.info("Check the user for " + token);
-        Logger.info("The return user is " + User.findByToken(token));
+        Logger.debug("Check the user for " + token);
         //check if expired
-        if(!User.isValid(token))
+        if(!userService.isValid(token)) {
+            Logger.warn("Invalid user: " + token);
             return unauthorized();
-        else
+        } else
         {
             //get user by token.
-            User user = User.findByToken(token);
+            User user = userService.findByToken(token);
+            Logger.info("The return user is " + user);
 
             List<Container> reposeNodes = null;
             try{
-                reposeNodes = getReposeInstances(user);
+                reposeNodes = reposeService.getReposeList(user);
 
-                final JsonNodeFactory nodeFactory = JsonNodeFactory.instance;
-                ArrayNode arrayNode = nodeFactory.arrayNode();
+                return ok(Json.toJson(reposeNodes));
 
-                if(reposeNodes != null) {
-                    reposeNodes.forEach(container -> {
-                                container.names().forEach(name -> Logger.info("Specific name: " + name));
-                                String[] containerNameTokens = String.join("", container.names()).split(Pattern.quote("/"));
-                                String containerName = containerNameTokens[containerNameTokens.length - 1];
-                                Logger.info("Name: " + containerName);
-                                if(containerName.contains("repose-" + user.tenant)) {
-                                    ObjectNode child = nodeFactory.objectNode();
-                                    if (container.status().trim().startsWith("Up"))
-                                        child.put("status", "Running");
-                                    else
-                                        child.put("status", "Stopped");
-                                    String reposeName = String.join(" ", container.names());
-                                    String[] reposeNames = reposeName.split(Pattern.quote("/"));
-
-                                    child.put("repose_name", reposeNames[reposeNames.length - 1]);
-                                    child.put("message", container.status());
-                                    child.put("version", reposeNames[reposeNames.length - 1].split(Pattern.quote("-"))[2]);
-                                    child.put("id", container.id());
-                                    arrayNode.add(child);
-                                }
-                            }
-                    );
-                }
-
-                return ok(Json.toJson(arrayNode));
-            } catch(InternalServerException | DockerException | InterruptedException | UnsupportedEncodingException ise) {
+            } catch(InternalServerException ise) {
                 return internalServerError(ise.getLocalizedMessage());
             }
         }
@@ -292,34 +276,6 @@ public class Repose extends Controller {
         throw new exceptions.NotFoundException("No zip files");
     }
 
-
-    /***
-     * Get cluster by name (that saves to /tmp/tenant)
-     * @param user
-     */
-    private List<Container> getReposeInstances(User user) throws InternalServerException, DockerException, InterruptedException, UnsupportedEncodingException {
-        Logger.debug("Get repose instances");
-
-        Cluster cluster = null;
-        try {
-            cluster = new Carina().getClusterByName(
-                    play.Play.application().configuration().getString("user.cluster.name"), user, false, true);
-        } catch (InternalServerException e) {
-            e.printStackTrace();
-            throw new InternalServerException(e.getMessage());
-        }
-
-        try {
-            final DockerClient docker = DefaultDockerClient.builder()
-                    .uri(URI.create(cluster.getUri()))
-                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
-                    .build();
-            return docker.listContainers(DockerClient.ListContainersParam.allContainers());
-        } catch (DockerCertificateException e) {
-            e.printStackTrace();
-            throw new InternalServerException(e.getMessage());
-        }
-    }
 
     /***
      * Stop repose instance based on user and container id.

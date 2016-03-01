@@ -18,6 +18,7 @@ import java.util.zip.ZipInputStream;
  */
 public class Carina {
 
+    @Deprecated
     public Cluster getClusterByName(String clusterName, User user, boolean isAdmin, boolean createIfDoesNotExist)
             throws InternalServerException {
         Logger.info("Get cluster " + clusterName);
@@ -67,6 +68,7 @@ public class Carina {
         return reposeCluster;
     }
 
+    @Deprecated
     private boolean doesClusterExist(String clusterName, User user) throws InternalServerException{
         JsonNode statusNode = new helpers.Carina().getCluster(clusterName, user);
         if(statusNode != null) {
@@ -76,6 +78,7 @@ public class Carina {
         }
     }
 
+    @Deprecated
     public boolean createCluster(String clusterName, User user) throws InternalServerException, InterruptedException {
         Logger.info("Create cluster " + clusterName + " with " + user.token);
         CarinaRequest carinaRequest = new CarinaRequest(clusterName, false, user.username);
@@ -128,7 +131,7 @@ public class Carina {
     }
 
 
-
+    @Deprecated
     private F.Promise<Cluster> getClusterZip(final String url, User user, String clusterName, boolean isAdmin) {
         Logger.info("Get cluster zip from " + url + " for " + clusterName);
         return WS.url(url)

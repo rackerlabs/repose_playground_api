@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertArrayEquals;
 import static org.mockito.Matchers.any;
@@ -247,4 +248,389 @@ public class ReposeServiceTest {
         }
 
     }
+
+    //testStartRepose
+
+    @Test
+    public void testStartReposeSuccess() {
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        try {
+            when(dockerClient.startReposeInstance(any(), any())).thenReturn(true);
+            assertTrue(new ReposeService(clusterFactory, clusterService, dockerClient).startReposeInstance(user, "1"));
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(dockerClient).startReposeInstance(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testStartReposeClusterNameNull() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn(null);
+        when(dockerClient.startReposeInstance(any(), any())).thenReturn(true);
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("What cluster am I supposed to create?  Misconfigured.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).startReposeInstance(user, "1");
+
+
+        verify(clusterFactory).getClusterName();
+        verify(dockerClient).startReposeInstance(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+    }
+
+    @Test
+    public void testStartReposeClusterNull() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(null);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+        when(dockerClient.startReposeInstance(any(), any())).thenReturn(true);
+
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("No cluster found.  Cluster creation failed and didn't throw an error.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).startReposeInstance(user, "1");
+
+        verify(clusterFactory).getClusterName();
+        verify(dockerClient).startReposeInstance(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testStartReposeException() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        when(dockerClient.startReposeInstance(any(), any())).thenThrow(new InternalServerException("Start repose instance"));
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Start repose instance");
+        new ReposeService(clusterFactory, clusterService, dockerClient).startReposeInstance(user, "1");
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(dockerClient).startReposeInstance(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    //testStopRepose
+
+    @Test
+    public void testStopReposeSuccess() {
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        try {
+            when(dockerClient.stopReposeInstance(any(), any())).thenReturn(true);
+            assertTrue(new ReposeService(clusterFactory, clusterService, dockerClient).stopReposeInstance(user, "1"));
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(dockerClient).stopReposeInstance(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testStopReposeClusterNameNull() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn(null);
+        when(dockerClient.stopReposeInstance(any(), any())).thenReturn(true);
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("What cluster am I supposed to create?  Misconfigured.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).stopReposeInstance(user, "1");
+
+
+        verify(clusterFactory).getClusterName();
+        verify(dockerClient).stopReposeInstance(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+    }
+
+    @Test
+    public void testStopReposeClusterNull() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(null);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+        when(dockerClient.stopReposeInstance(any(), any())).thenReturn(true);
+
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("No cluster found.  Cluster creation failed and didn't throw an error.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).stopReposeInstance(user, "1");
+
+        verify(clusterFactory).getClusterName();
+        verify(dockerClient).stopReposeInstance(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testStopReposeException() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setConfig_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        when(dockerClient.stopReposeInstance(any(), any())).thenThrow(new InternalServerException("Stop repose instance"));
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Stop repose instance");
+        new ReposeService(clusterFactory, clusterService, dockerClient).stopReposeInstance(user, "1");
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(dockerClient).stopReposeInstance(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
 }

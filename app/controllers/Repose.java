@@ -13,7 +13,6 @@ import exceptions.NotFoundException;
 import helpers.Helpers;
 import models.Carina;
 import models.Cluster;
-import models.Container;
 import models.User;
 import play.Logger;
 import play.libs.F;
@@ -27,7 +26,10 @@ import play.mvc.Result;
 import services.IReposeService;
 import services.IUserService;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.*;
@@ -71,16 +73,18 @@ public class Repose extends Controller {
         {
             //get user by token.
             User user = userService.findByToken(token);
-            Logger.info("The return user is " + user);
+            if(user != null) {
+                Logger.debug("User is authorized: " + user.toString() + " for " + token);
+                try{
+                    return ok(Json.toJson(reposeService.getReposeList(user)));
+                } catch(InternalServerException ise) {
+                    return internalServerError(ise.getLocalizedMessage());
+                }
 
-            List<Container> reposeNodes = null;
-            try{
-                reposeNodes = reposeService.getReposeList(user);
-
-                return ok(Json.toJson(reposeNodes));
-
-            } catch(InternalServerException ise) {
-                return internalServerError(ise.getLocalizedMessage());
+            } else {
+                Logger.debug("The only way this could have happened is if token timeout between " +
+                        "previous check and now.  Unlikely but possible.");
+                return unauthorized();
             }
         }
     }

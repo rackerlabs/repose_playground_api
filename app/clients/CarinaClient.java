@@ -85,7 +85,8 @@ public class CarinaClient implements ICarinaClient {
     }
 
     @Override
-    public Cluster getClusterWithZip(String url, User user, String clusterName, boolean isAdmin) {
+    public Cluster getClusterWithZip(String url, User user, String clusterName, boolean isAdmin)
+            throws NotFoundException, InternalServerException{
         Logger.debug("Get cluster zip from " + url + " for " + clusterName);
         return WS.url(url)
                 .setHeader("x-auth-token", user.token)

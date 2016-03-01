@@ -78,7 +78,9 @@ public class Repose extends Controller {
                 try{
                     return ok(Json.toJson(reposeService.getReposeList(user)));
                 } catch(InternalServerException ise) {
-                    return internalServerError(ise.getLocalizedMessage());
+                    ObjectNode response = JsonNodeFactory.instance.objectNode();
+                    response.put("message", ise.getLocalizedMessage());
+                    return internalServerError(Json.toJson(response));
                 }
 
             } else {

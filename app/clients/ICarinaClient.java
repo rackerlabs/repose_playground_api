@@ -3,6 +3,7 @@ package clients;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.ImplementedBy;
 import exceptions.InternalServerException;
+import exceptions.NotFoundException;
 import models.Cluster;
 import models.User;
 
@@ -14,7 +15,8 @@ public interface ICarinaClient {
 
     boolean createCluster(String clusterName, User user) throws InternalServerException, InterruptedException;
 
-    Cluster getClusterWithZip(final String url, User user, String clusterName, boolean isAdmin);
+    Cluster getClusterWithZip(final String url, User user, String clusterName, boolean isAdmin)
+            throws NotFoundException, InternalServerException;
 
     JsonNode getCluster(String clusterName, User user) throws InternalServerException;
 }

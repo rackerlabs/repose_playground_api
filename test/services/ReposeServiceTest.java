@@ -67,9 +67,9 @@ public class ReposeServiceTest {
         }
 
         when(clusterFactory.getClusterName()).thenReturn("fake-name");
-        when(dockerClient.getReposeContainers(any(), any())).thenReturn(containerList);
 
         try {
+            when(dockerClient.getReposeContainers(any(), any())).thenReturn(containerList);
             List<Container> returnedContainerList =
                     new ReposeService(clusterFactory, clusterService, dockerClient).getReposeList(user);
             assertEquals(returnedContainerList.size(), containerList.size());
@@ -79,9 +79,9 @@ public class ReposeServiceTest {
         }
 
         verify(clusterFactory).getClusterName();
-        verify(dockerClient).getReposeContainers(any(), any());
 
         try{
+            verify(dockerClient).getReposeContainers(any(), any());
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
@@ -229,18 +229,18 @@ public class ReposeServiceTest {
         }
 
         when(clusterFactory.getClusterName()).thenReturn("fake-name");
-        when(dockerClient.getReposeContainers(any(), any())).thenReturn(null);
 
         try {
+            when(dockerClient.getReposeContainers(any(), any())).thenReturn(null);
             new ReposeService(clusterFactory, clusterService, dockerClient).getReposeList(user);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
 
         verify(clusterFactory).getClusterName();
-        verify(dockerClient).getReposeContainers(any(), any());
 
         try{
+            verify(dockerClient).getReposeContainers(any(), any());
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());

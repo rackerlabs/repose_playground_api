@@ -193,7 +193,8 @@ public class Carina {
     }
 
 
-    public void unzip(InputStream responseStream, Cluster cluster, User user, boolean isAdmin) throws IOException {
+    @Deprecated
+    private void unzip(InputStream responseStream, Cluster cluster, User user, boolean isAdmin) throws IOException {
         Logger.info("In unzip for cluster: " + cluster);
         Reader reader = null;
         StringWriter writer = new StringWriter();

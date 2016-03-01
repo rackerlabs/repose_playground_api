@@ -15,5 +15,8 @@ public interface IReposeService {
 
     List<Container> getReposeList(User user) throws InternalServerException;
 
+    boolean stopReposeInstance(User user, String containerId) throws InternalServerException;
+
+    boolean startReposeInstance(User user, String containerId) throws InternalServerException;
 
 }

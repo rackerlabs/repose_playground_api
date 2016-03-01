@@ -1,10 +1,8 @@
 package clients;
 
 import com.google.inject.Inject;
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerCertificateException;
-import com.spotify.docker.client.DockerCertificates;
-import com.spotify.docker.client.DockerException;
+import com.spotify.docker.client.*;
+import exceptions.InternalServerException;
 import factories.IContainerFactory;
 import models.Cluster;
 import models.Container;
@@ -13,7 +11,6 @@ import play.Logger;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,7 +32,7 @@ public class SpotifyDockerClient implements IDockerClient {
      * @return List of Container models
      */
     @Override
-    public List<Container> getReposeContainers(Cluster cluster, User user)  {
+    public List<Container> getReposeContainers(Cluster cluster, User user) throws InternalServerException {
         final com.spotify.docker.client.DockerClient docker;
         try {
             docker = DefaultDockerClient.builder()
@@ -48,9 +45,40 @@ public class SpotifyDockerClient implements IDockerClient {
         } catch (DockerCertificateException | InterruptedException | DockerException e) {
             Logger.error("Unable to retrieve containers: " + e.getLocalizedMessage());
             e.printStackTrace();
+            throw new InternalServerException(e.getLocalizedMessage());
         }
 
-        return new ArrayList<Container>();
+    }
 
+    @Override
+    public boolean startReposeInstance(Cluster cluster, String containerId) throws InternalServerException {
+        final com.spotify.docker.client.DockerClient docker;
+        try {
+            docker = DefaultDockerClient.builder()
+                    .uri(URI.create(cluster.getUri()))
+                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
+                    .build();
+            docker.startContainer(containerId);
+            return true;
+        } catch (DockerCertificateException | DockerException | InterruptedException e) {
+            e.printStackTrace();
+            throw new InternalServerException(e.getMessage());
+        }
+    }
+
+    @Override
+    public boolean stopReposeInstance(Cluster cluster, String containerId) throws InternalServerException {
+        final com.spotify.docker.client.DockerClient docker;
+        try {
+            docker = DefaultDockerClient.builder()
+                    .uri(URI.create(cluster.getUri()))
+                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
+                    .build();
+            docker.stopContainer(containerId, 5);
+            return true;
+        } catch (DockerCertificateException | DockerException | InterruptedException e) {
+            e.printStackTrace();
+            throw new InternalServerException(e.getMessage());
+        }
     }
 }

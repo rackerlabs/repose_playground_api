@@ -4,17 +4,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import exceptions.InternalServerException;
 import exceptions.NotFoundException;
+import factories.ICarinaFactory;
 import factories.IClusterFactory;
-import helpers.Helpers;
 import models.CarinaRequest;
 import models.Cluster;
 import models.User;
 import play.Logger;
 import play.libs.F;
 import play.libs.Json;
-import play.libs.ws.WS;
+import play.libs.ws.WSClient;
 import play.libs.ws.WSResponse;
-import repositories.IClusterRepository;
 
 import java.io.*;
 import java.util.zip.ZipEntry;
@@ -24,23 +23,32 @@ import java.util.zip.ZipInputStream;
  * Created by dimi5963 on 2/29/16.
  */
 public class CarinaClient implements ICarinaClient {
+    @Inject
+    WSClient wsClient;
 
     private final IClusterFactory clusterFactory;
-    private final IClusterRepository clusterRepository;
+    private final ICarinaFactory carinaFactory;
 
 
     @Inject
-    public CarinaClient(IClusterFactory clusterFactory, IClusterRepository clusterRepository){
+    public CarinaClient(IClusterFactory clusterFactory, ICarinaFactory carinaFactory){
         this.clusterFactory = clusterFactory;
-        this.clusterRepository = clusterRepository;
+        this.carinaFactory = carinaFactory;
     }
 
     @Override
     public boolean createCluster(String clusterName, User user) throws InternalServerException, InterruptedException {
+        if(user == null || clusterName == null)
+            throw new InternalServerException("Required parameters were no provided.");
         Logger.debug("Create cluster " + clusterName + " with " + user.token);
         CarinaRequest carinaRequest = new CarinaRequest(clusterName, false, user.username);
 
-        F.Promise<String> statusPromise = WS.url(clusterFactory.getCarinaUserUrl(user.username))
+        String carinaUserUrl = clusterFactory.getCarinaUserUrl(user.username);
+
+        if(carinaUserUrl == null)
+            throw new InternalServerException("Carina user url is misconfigured.");
+
+        F.Promise<String> statusPromise = wsClient.url(carinaUserUrl)
                 .setHeader("x-auth-token", user.token)
                 .setHeader("x-content-type", "application/json")
                 .post(Json.toJson(carinaRequest)).map(
@@ -63,21 +71,28 @@ public class CarinaClient implements ICarinaClient {
                             @Override
                             public String apply(Throwable throwable) throws Throwable {
                                 throw new InternalServerException(
-                                        "{'message': 'We are currently experiencing difficulties.  " +
-                                                "Please try again later.'}");
+                                        "We are currently experiencing difficulties.  " +
+                                                "Please try again later.");
                             }
                         }
                 );
 
         String status = statusPromise.get(30000);
+        //TODO: convert to akka.  Don't block current thread
+        if(status.equals("error"))
+            throw new InternalServerException("Cluster ended up in error state");
+
         while(!status.equals("active") && !status.equals("error")){
-            JsonNode statusNode = new helpers.Carina().getCluster(clusterName, user);
+            JsonNode statusNode = getCluster(clusterName, user);
             if(statusNode != null) {
                 status = statusNode.asText();
-            }else if (status.equals("error")){
-                throw new InternalServerException("Cluster ended up in error state");
-            }else {
+            } else {
                 throw new InternalServerException("Unable to get status");
+            }
+            if (status.equals("error")){
+                throw new InternalServerException("Cluster ended up in error state");
+            } else if(status.equals("active")){
+                break;
             }
             Thread.sleep(1000);
         }
@@ -85,12 +100,16 @@ public class CarinaClient implements ICarinaClient {
     }
 
     @Override
-    public Cluster getClusterWithZip(String url, User user, String clusterName, boolean isAdmin)
+    public Cluster getClusterWithZip(User user, String clusterName)
             throws NotFoundException, InternalServerException{
-        Logger.debug("Get cluster zip from " + url + " for " + clusterName);
-        return WS.url(url)
+        if(user == null || clusterName == null)
+            throw new InternalServerException("Required parameters were not provided.");
+        String carinaZipUrl = clusterFactory.getCarinaZipUrl(user.username, clusterName);
+        if(carinaZipUrl == null)
+            throw new InternalServerException("Carina zip url is misconfigured.");
+        Logger.error("Get cluster zip from " + carinaZipUrl + " for " + clusterName);
+        return wsClient.url(carinaZipUrl)
                 .setHeader("x-auth-token", user.token)
-                .setHeader("x-content-type", "application/json")
                 .get().map(new F.Function<WSResponse, Cluster>() {
                     public Cluster apply(WSResponse response) throws Throwable {
                         Logger.debug("getClusterZip::response for " + user);
@@ -98,7 +117,7 @@ public class CarinaClient implements ICarinaClient {
                         switch (response.getStatus()) {
                             case 201:
                                 JsonNode zipResponse = response.asJson();
-                                return WS.url(
+                                return wsClient.url(
                                         zipResponse.get("zip_url").asText().replace("\"", ""))
                                         .setHeader("x-auth-token", user.token)
                                         .setHeader("Accept", "application/zip")
@@ -113,10 +132,11 @@ public class CarinaClient implements ICarinaClient {
                                                                 try {
                                                                     return unzip(
                                                                             innerResponse.getBodyAsStream(),
-                                                                            clusterName, user, isAdmin);
-                                                                } catch (Exception e) {
+                                                                            clusterName, user);
+                                                                } catch (InternalServerException | IOException e) {
                                                                     e.printStackTrace();
                                                                     Logger.error(e.getMessage());
+                                                                    throw new InternalServerException(e.getLocalizedMessage());
                                                                 }
                                                             default:
                                                                 throw new InternalServerException("Could not retrieve cluster zip.");
@@ -151,7 +171,9 @@ public class CarinaClient implements ICarinaClient {
 
     @Override
     public JsonNode getCluster(String clusterName, User user) throws InternalServerException {
-        F.Promise<JsonNode> result = WS.url(clusterFactory.getCarinaClusterUrl(user.username, clusterName))
+        if(user == null || clusterName == null)
+            throw new InternalServerException("Required parameters were not provided.");
+        F.Promise<JsonNode> result = wsClient.url(clusterFactory.getCarinaClusterUrl(user.username, clusterName))
                 .setHeader("x-auth-token", user.token)
                 .get().map(new F.Function<WSResponse, JsonNode>() {
                     @Override
@@ -162,7 +184,7 @@ public class CarinaClient implements ICarinaClient {
                             case 200:
                                 return response.asJson().get("status");
                             case 404:
-                                throw new NotFoundException("Cluster not found");
+                                throw new NotFoundException("Cluster not found.");
                             default:
                                 throw new InternalServerException("Didn't expect that!");
                         }
@@ -179,8 +201,8 @@ public class CarinaClient implements ICarinaClient {
         return result.get(30000);
     }
 
-
-    private Cluster unzip(InputStream responseStream, String clusterName, User user, boolean isAdmin) throws IOException {
+    private Cluster unzip(InputStream responseStream, String clusterName, User user)
+            throws IOException, InternalServerException {
         Logger.debug("In unzip for cluster: " + clusterName);
         Cluster reposeCluster = new Cluster();
         reposeCluster.setName(clusterName);
@@ -197,6 +219,13 @@ public class CarinaClient implements ICarinaClient {
             Logger.debug("Zip file: " + file.getName());
 
             while(file != null){
+                Logger.debug("Check if file has a directory");
+                int fileTokens = file.getName().split("/").length;
+                String fileName = file.getName().split("/")[fileTokens - 1];
+                String directoryName = (fileTokens > 1) ? file.getName().split("/")[fileTokens - 2] : "";
+                if(fileName == null)
+                    throw new InternalServerException("Invalid files in response: " + file.getName());
+
                 try {
                     writer = new StringWriter();
 
@@ -205,39 +234,19 @@ public class CarinaClient implements ICarinaClient {
                         writer.write(buffer, 0, length);
                     }
 
-                    switch(file.getName().split("/")[1]){
+                    Logger.debug("Create temporary directory and store creds in it");
+                    reposeCluster.setCert_directory(
+                            carinaFactory.getCarinaDirectoryWithCluster(user.tenant,
+                                    directoryName).toString());
+                    switch(fileName){
                         case "ca.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.debug(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                                reposeCluster.setCert_directory(Helpers.getCarinaDirectoryWithCluster(user.tenant,
-                                        file.getName().substring(0, file.getName().lastIndexOf("/"))).toString());
-                            }
-                            break;
                         case "cert.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.debug(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
-                            break;
                         case "key.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.debug(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
-                            break;
                         case "ca-key.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.debug(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
+                            carinaFactory.createFileInCarina(file, writer, user);
                             break;
                         case "docker.env":
-                            //TODO: get the URI from docker.env
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
+                            carinaFactory.createFileInCarina(file, writer, user);
                             String[] dockerEnv = writer.toString().split("\\n");
                             for(String s: dockerEnv){
                                 if(s.trim().startsWith("export DOCKER_HOST")){

@@ -87,7 +87,7 @@ public class Test extends Controller {
         Cluster cluster = null;
         try {
             cluster = new Carina().getClusterByName(
-                    play.Play.application().configuration().getString("user.cluster.name"), user, false, false);
+                    play.Play.application().configuration().getString("user.cluster.name"), user, false);
         } catch (InternalServerException e) {
             e.printStackTrace();
             throw new InternalServerException(e.getMessage());

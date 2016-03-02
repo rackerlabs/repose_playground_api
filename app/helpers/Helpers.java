@@ -574,6 +574,7 @@ public class Helpers {
         return wrapper;
     }
 
+    @Deprecated
     public static boolean createFileInCarina(ZipEntry file, StringWriter data, User user){
         try {
             String parentDirectories = file.getName().substring(0, file.getName().lastIndexOf("/"));
@@ -587,6 +588,7 @@ public class Helpers {
         return false;
     }
 
+    @Deprecated
     public static Path getCarinaDirectory(String tenant){
         return Paths.get("/tmp", tenant);
 
@@ -619,6 +621,7 @@ public class Helpers {
         }
     }
 
+    @Deprecated
     public static Path getCarinaDirectoryWithCluster(String tenant, String cluster){
         return getCarinaDirectory(tenant).resolve(cluster);
 

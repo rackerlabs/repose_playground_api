@@ -45,7 +45,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -62,7 +61,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -83,7 +82,7 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).getReposeContainers(any(), any());
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -104,7 +103,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -121,7 +119,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -138,7 +136,7 @@ public class ReposeServiceTest {
         verify(dockerClient).getReposeContainers(any(), any());
 
         try{
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -159,7 +157,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -176,7 +173,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(null);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(null);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -193,7 +190,7 @@ public class ReposeServiceTest {
         verify(dockerClient).getReposeContainers(any(), any());
 
         try{
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -215,7 +212,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -224,7 +220,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -242,7 +238,7 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).getReposeContainers(any(), any());
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -265,7 +261,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -274,7 +269,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -292,7 +287,7 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).startReposeInstance(any(), any());
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -313,7 +308,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -322,7 +316,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -339,7 +333,7 @@ public class ReposeServiceTest {
         verify(dockerClient).startReposeInstance(any(), any());
 
         try{
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -360,7 +354,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -369,7 +362,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(null);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(null);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -386,7 +379,7 @@ public class ReposeServiceTest {
         verify(dockerClient).startReposeInstance(any(), any());
 
         try{
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -408,7 +401,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -417,7 +409,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -434,7 +426,7 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).startReposeInstance(any(), any());
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -457,7 +449,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -466,7 +457,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -484,7 +475,7 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).stopReposeInstance(any(), any());
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -505,7 +496,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -514,7 +504,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -531,7 +521,7 @@ public class ReposeServiceTest {
         verify(dockerClient).stopReposeInstance(any(), any());
 
         try{
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -552,7 +542,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -561,7 +550,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(null);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(null);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -578,7 +567,7 @@ public class ReposeServiceTest {
         verify(dockerClient).stopReposeInstance(any(), any());
 
         try{
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -600,7 +589,6 @@ public class ReposeServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -609,7 +597,7 @@ public class ReposeServiceTest {
         IDockerClient dockerClient = mock(IDockerClient.class);
 
         try {
-            when(clusterService.getClusterByName(anyString(), any(), anyBoolean(), anyBoolean())).thenReturn(cluster);
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -626,7 +614,7 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).stopReposeInstance(any(), any());
-            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean(), anyBoolean());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }

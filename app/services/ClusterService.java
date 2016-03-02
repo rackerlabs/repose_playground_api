@@ -33,13 +33,12 @@ public class ClusterService implements IClusterService {
      * Request to retrieve user cluster by its name
      * @param clusterName
      * @param user
-     * @param isAdmin
      * @param createIfDoesNotExist
      * @return
      * @throws InternalServerException
      */
     @Override
-    public Cluster getClusterByName(String clusterName, User user, boolean isAdmin, boolean createIfDoesNotExist)
+    public Cluster getClusterByName(String clusterName, User user, boolean createIfDoesNotExist)
             throws InternalServerException {
         Logger.debug("Get cluster " + clusterName);
 
@@ -64,9 +63,7 @@ public class ClusterService implements IClusterService {
                 }
             }
             try {
-                reposeCluster = carinaClient.getClusterWithZip(
-                        clusterFactory.getCarinaZipUrl(user.username, clusterName),
-                        user, clusterName, isAdmin);
+                reposeCluster = carinaClient.getClusterWithZip(user, clusterName);
                 if(reposeCluster != null)
                     clusterRepository.save(reposeCluster);
                 else

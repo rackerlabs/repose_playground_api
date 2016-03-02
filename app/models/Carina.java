@@ -19,7 +19,7 @@ import java.util.zip.ZipInputStream;
 public class Carina {
 
     @Deprecated
-    public Cluster getClusterByName(String clusterName, User user, boolean isAdmin, boolean createIfDoesNotExist)
+    public Cluster getClusterByName(String clusterName, User user, boolean createIfDoesNotExist)
             throws InternalServerException {
         Logger.info("Get cluster " + clusterName);
 
@@ -43,7 +43,7 @@ public class Carina {
             //get docker instances and return all containers named repose-playground
             //get cluster creds
             F.Promise<Cluster> clusterPromise = getClusterZip("https://app.getcarina.com/clusters/" +
-                    user.username + "/" + clusterName + "/zip", user, clusterName, isAdmin);
+                    user.username + "/" + clusterName + "/zip", user, clusterName);
             Logger.info("test cluster promise: " + clusterPromise);
             F.Promise<Cluster> resultPromise = clusterPromise.map(
                     new F.Function<Cluster, Cluster>() {
@@ -132,7 +132,7 @@ public class Carina {
 
 
     @Deprecated
-    private F.Promise<Cluster> getClusterZip(final String url, User user, String clusterName, boolean isAdmin) {
+    private F.Promise<Cluster> getClusterZip(final String url, User user, String clusterName) {
         Logger.info("Get cluster zip from " + url + " for " + clusterName);
         return WS.url(url)
                 .setHeader("x-auth-token", user.token)
@@ -160,7 +160,7 @@ public class Carina {
                                                                 reposeCluster.setName(clusterName);
                                                                 reposeCluster.setUser(user.id);
                                                                 try {
-                                                                    unzip(innerResponse.getBodyAsStream(), reposeCluster, user, isAdmin);
+                                                                    unzip(innerResponse.getBodyAsStream(), reposeCluster, user);
                                                                 } catch (Exception e){
                                                                     e.printStackTrace();
                                                                     Logger.error(e.getMessage());
@@ -194,7 +194,7 @@ public class Carina {
 
 
     @Deprecated
-    private void unzip(InputStream responseStream, Cluster cluster, User user, boolean isAdmin) throws IOException {
+    private void unzip(InputStream responseStream, Cluster cluster, User user) throws IOException {
         Logger.info("In unzip for cluster: " + cluster);
         Reader reader = null;
         StringWriter writer = new StringWriter();
@@ -217,37 +217,26 @@ public class Carina {
 
                     switch(file.getName().split("/")[1]){
                         case "ca.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                                cluster.setCert_directory(Helpers.getCarinaDirectoryWithCluster(user.tenant,
-                                        file.getName().substring(0, file.getName().lastIndexOf("/"))).toString());
-                            }
+                            Helpers.createFileInCarina(file, writer, user);
+                            Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
+                            cluster.setCert_directory(Helpers.getCarinaDirectoryWithCluster(user.tenant,
+                                    file.getName().substring(0, file.getName().lastIndexOf("/"))).toString());
                             break;
                         case "cert.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
+                            Helpers.createFileInCarina(file, writer, user);
+                            Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
                             break;
                         case "key.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
+                            Helpers.createFileInCarina(file, writer, user);
+                            Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
                             break;
                         case "ca-key.pem":
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
+                            Helpers.createFileInCarina(file, writer, user);
+                            Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
                             break;
                         case "docker.env":
-                            //TODO: get the URI from docker.env
-                            if(!isAdmin) {
-                                Helpers.createFileInCarina(file, writer, user);
-                                Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
-                            }
+                            Helpers.createFileInCarina(file, writer, user);
+                            Logger.info(Helpers.getCarinaDirectory(user.tenant).resolve(file.getName()).toString());
                             String[] dockerEnv = writer.toString().split("\\n");
                             for(String s: dockerEnv){
                                 if(s.trim().startsWith("export DOCKER_HOST")){

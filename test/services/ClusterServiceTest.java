@@ -19,7 +19,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.*;
 
 /**
@@ -45,7 +44,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -57,11 +55,10 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
         try {
-            when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+            when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
             when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
             when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -70,20 +67,18 @@ public class ClusterServiceTest {
 
         try {
         Cluster returnedCluster = new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
             assertEquals(returnedCluster.cert_directory, cluster.cert_directory);
-            assertEquals(returnedCluster.config_directory, cluster.config_directory);
+            assertEquals(returnedCluster.uri, cluster.uri);
             assertEquals(returnedCluster.id, cluster.id);
         }catch(InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
 
-
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
         try {
-            verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+            verify(carinaClient).getClusterWithZip(any(), anyString());
             verify(carinaClient, times(1)).getCluster(anyString(), any());
             verify(carinaClient).createCluster(anyString(), any());
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -106,7 +101,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -118,20 +112,19 @@ public class ClusterServiceTest {
 
         try {
             Cluster returnedCluster = new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                    .getClusterByName("fake-cluster", user, false, true);
+                    .getClusterByName("fake-cluster", user, true);
             assertEquals(returnedCluster.cert_directory, cluster.cert_directory);
-            assertEquals(returnedCluster.config_directory, cluster.config_directory);
+            assertEquals(returnedCluster.uri, cluster.uri);
             assertEquals(returnedCluster.id, cluster.id);
         }catch(InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
 
 
-        verify(clusterFactory, never()).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
         try {
-            verify(carinaClient, never()).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+            verify(carinaClient, never()).getClusterWithZip(any(), anyString());
             verify(carinaClient, never()).getCluster(anyString(), any());
             verify(carinaClient, never()).createCluster(anyString(), any());
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -151,14 +144,13 @@ public class ClusterServiceTest {
         exception.expect(InternalServerException.class);
         exception.expectMessage("User not provided.");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
 
 
-        verify(clusterFactory,never()).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository,never()).findByUserandName(anyLong(), anyString());
 
         try {
-            verify(carinaClient, never()).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+            verify(carinaClient, never()).getClusterWithZip(any(), anyString());
             verify(carinaClient, never()).getCluster(anyString(), any());
             verify(carinaClient,never()).createCluster(anyString(), any());
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -181,7 +173,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -189,11 +180,10 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
         try {
-            when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+            when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
             when(carinaClient.getCluster(anyString(), any())).thenReturn(null);
             when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -202,20 +192,19 @@ public class ClusterServiceTest {
 
         try {
             Cluster returnedCluster = new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                    .getClusterByName("fake-cluster", user, false, true);
+                    .getClusterByName("fake-cluster", user, true);
             assertEquals(returnedCluster.cert_directory, cluster.cert_directory);
-            assertEquals(returnedCluster.config_directory, cluster.config_directory);
+            assertEquals(returnedCluster.uri, cluster.uri);
             assertEquals(returnedCluster.id, cluster.id);
         }catch(InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
         try {
-            verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+            verify(carinaClient).getClusterWithZip(any(), anyString());
             verify(carinaClient, times(1)).getCluster(anyString(), any());
             verify(carinaClient).createCluster(anyString(), any());
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -238,7 +227,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -250,11 +238,10 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
         try {
-            when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+            when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
             when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
             when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -263,20 +250,19 @@ public class ClusterServiceTest {
 
         try {
             Cluster returnedCluster = new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                    .getClusterByName("fake-cluster", user, false, true);
+                    .getClusterByName("fake-cluster", user, true);
             assertEquals(returnedCluster.cert_directory, cluster.cert_directory);
-            assertEquals(returnedCluster.config_directory, cluster.config_directory);
+            assertEquals(returnedCluster.uri, cluster.uri);
             assertEquals(returnedCluster.id, cluster.id);
         }catch(InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
         try {
-            verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+            verify(carinaClient).getClusterWithZip(any(), anyString());
             verify(carinaClient, times(1)).getCluster(anyString(), any());
             verify(carinaClient).createCluster(anyString(), any());
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -299,7 +285,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -307,11 +292,10 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
         try {
-            when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+            when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
             when(carinaClient.getCluster(anyString(), any())).thenThrow(new InternalServerException("Oops failed"));;
             when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -321,14 +305,13 @@ public class ClusterServiceTest {
         exception.expect(InternalServerException.class);
         exception.expectMessage("Oops failed");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
         try {
-            verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+            verify(carinaClient).getClusterWithZip(any(), anyString());
             verify(carinaClient).getCluster(anyString(), any());
             verify(carinaClient, never()).createCluster(anyString(), any());
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -352,7 +335,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -364,23 +346,21 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-uri");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
-        when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+        when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
         when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
         when(carinaClient.getCluster(anyString(), any())).thenReturn(null);
 
         exception.expect(InternalServerException.class);
         exception.expectMessage("Cluster doesn't exist.");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, false);
+                .getClusterByName("fake-cluster", user, false);
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
-        verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+        verify(carinaClient).getClusterWithZip(any(), anyString());
         verify(carinaClient, times(1)).getCluster(anyString(), any());
         verify(carinaClient).createCluster(anyString(), any());
 
@@ -402,7 +382,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -414,23 +393,21 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
-        when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+        when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
         when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
         when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
 
         exception.expect(InternalServerException.class);
         exception.expectMessage("Cluster doesn't exist.");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, false);
+                .getClusterByName("fake-cluster", user, false);
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
-        verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+        verify(carinaClient).getClusterWithZip(any(), anyString());
         verify(carinaClient, times(1)).getCluster(anyString(), any());
         verify(carinaClient).createCluster(anyString(), any());
 
@@ -452,7 +429,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -464,22 +440,20 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
-        when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+        when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
         when(carinaClient.createCluster(anyString(), any())).thenThrow(new InternalServerException("failed to create."));
         when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
 
         exception.expect(InternalServerException.class);
         exception.expectMessage("failed to create.");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
-        verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+        verify(carinaClient).getClusterWithZip(any(), anyString());
         verify(carinaClient, times(1)).getCluster(anyString(), any());
         verify(carinaClient).createCluster(anyString(), any());
 
@@ -501,7 +475,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -513,24 +486,22 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn(null);
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
-        when(carinaClient.getClusterWithZip(anyString(), any(), anyString(), anyBoolean())).thenReturn(cluster);
+        when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
         when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
         when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
 
         Cluster returnedCluster = new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
         assertEquals(returnedCluster.cert_directory, cluster.cert_directory);
-        assertEquals(returnedCluster.config_directory, cluster.config_directory);
+        assertEquals(returnedCluster.uri, cluster.uri);
         assertEquals(returnedCluster.id, cluster.id);
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
-        verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+        verify(carinaClient).getClusterWithZip(any(), anyString());
         verify(carinaClient, times(1)).getCluster(anyString(), any());
         verify(carinaClient).createCluster(anyString(), any());
     }
@@ -551,7 +522,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -563,12 +533,10 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
         try {
-            when(carinaClient.getClusterWithZip(
-                    anyString(), any(), anyString(), anyBoolean())).thenReturn(null);
+            when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(null);
             when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
             when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
         }catch(NotFoundException | InternalServerException | InterruptedException e) {
@@ -578,13 +546,12 @@ public class ClusterServiceTest {
         exception.expect(InternalServerException.class);
         exception.expectMessage("Unable to save new cluster.");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
-        verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+        verify(carinaClient).getClusterWithZip(any(), anyString());
         verify(carinaClient, times(1)).getCluster(anyString(), any());
         verify(carinaClient).createCluster(anyString(), any());
 
@@ -606,7 +573,6 @@ public class ClusterServiceTest {
         //mock cluster
         Cluster cluster = new Cluster();
         cluster.setCert_directory("/tmp/test");
-        cluster.setConfig_directory("/tmp/test");
         cluster.setName("fake-name");
         cluster.setUri("fake-uri");
 
@@ -618,12 +584,10 @@ public class ClusterServiceTest {
         IClusterRepository clusterRepository = mock(IClusterRepository.class);
         ICarinaClient carinaClient = mock(ICarinaClient.class);
 
-        when(clusterFactory.getCarinaZipUrl(anyString(), any())).thenReturn("fake-url");
         when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
 
         try {
-            when(carinaClient.getClusterWithZip(
-                    anyString(), any(), anyString(), anyBoolean()))
+            when(carinaClient.getClusterWithZip(any(), anyString()))
                     .thenThrow(new InternalServerException("failed to get cluster with zip."));
             when(carinaClient.createCluster(anyString(), any())).thenReturn(true);
             when(carinaClient.getCluster(anyString(), any())).thenReturn(jsonNode);
@@ -634,13 +598,12 @@ public class ClusterServiceTest {
         exception.expect(InternalServerException.class);
         exception.expectMessage("Unable to save new cluster.");
         new ClusterService(clusterRepository, carinaClient, clusterFactory)
-                .getClusterByName("fake-cluster", user, false, true);
+                .getClusterByName("fake-cluster", user, true);
 
 
-        verify(clusterFactory).getCarinaZipUrl(anyString(), any());
         verify(clusterRepository).findByUserandName(anyLong(), anyString());
 
-        verify(carinaClient).getClusterWithZip(anyString(), any(), anyString(), anyBoolean());
+        verify(carinaClient).getClusterWithZip(any(), anyString());
         verify(carinaClient, times(1)).getCluster(anyString(), any());
         verify(carinaClient).createCluster(anyString(), any());
     }

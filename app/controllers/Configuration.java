@@ -141,7 +141,7 @@ public class Configuration extends Controller {
         Cluster cluster = null;
         try {
             cluster = new Carina().getClusterByName(
-                    play.Play.application().configuration().getString("user.cluster.name"), user, false, true);
+                    play.Play.application().configuration().getString("user.cluster.name"), user, true);
         } catch (InternalServerException e) {
             e.printStackTrace();
             throw new InternalServerException(e.getMessage());

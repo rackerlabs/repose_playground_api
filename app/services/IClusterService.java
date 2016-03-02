@@ -11,7 +11,7 @@ import models.User;
 @ImplementedBy(ClusterService.class)
 public interface IClusterService {
 
-    Cluster getClusterByName(String clusterName, User user, boolean isAdmin, boolean createIfDoesNotExist)
+    Cluster getClusterByName(String clusterName, User user, boolean createIfDoesNotExist)
             throws InternalServerException;
 
 }

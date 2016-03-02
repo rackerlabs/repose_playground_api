@@ -39,7 +39,7 @@ public class ReposeService implements IReposeService{
         String clusterName = clusterFactory.getClusterName();
 
         if(clusterName != null) {
-            Cluster cluster = clusterService.getClusterByName(clusterName, user, isAdmin, createClusterIfDNE);
+            Cluster cluster = clusterService.getClusterByName(clusterName, user, createClusterIfDNE);
             if(cluster != null)
                 return dockerClient.getReposeContainers(cluster, user);
             else{
@@ -63,7 +63,7 @@ public class ReposeService implements IReposeService{
         String clusterName = clusterFactory.getClusterName();
 
         if(clusterName != null) {
-            Cluster cluster = clusterService.getClusterByName(clusterName, user, isAdmin, createClusterIfDNE);
+            Cluster cluster = clusterService.getClusterByName(clusterName, user, createClusterIfDNE);
             if(cluster != null)
                 return dockerClient.stopReposeInstance(cluster, containerId);
             else{
@@ -86,7 +86,7 @@ public class ReposeService implements IReposeService{
         String clusterName = clusterFactory.getClusterName();
 
         if(clusterName != null) {
-            Cluster cluster = clusterService.getClusterByName(clusterName, user, isAdmin, createClusterIfDNE);
+            Cluster cluster = clusterService.getClusterByName(clusterName, user, createClusterIfDNE);
             if(cluster != null)
                 return dockerClient.startReposeInstance(cluster, containerId);
             else{

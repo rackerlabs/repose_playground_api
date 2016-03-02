@@ -6,6 +6,7 @@ import exceptions.InternalServerException;
 import factories.IContainerFactory;
 import models.Cluster;
 import models.Container;
+import models.ContainerStats;
 import models.User;
 import play.Logger;
 
@@ -18,10 +19,14 @@ import java.util.List;
  */
 public class SpotifyDockerClient implements IDockerClient {
 
-    private final IContainerFactory<com.spotify.docker.client.messages.Container> containerFactory;
+    private final IContainerFactory<
+            com.spotify.docker.client.messages.Container,
+            com.spotify.docker.client.messages.ContainerStats> containerFactory;
 
     @Inject
-    public SpotifyDockerClient(IContainerFactory<com.spotify.docker.client.messages.Container> containerFactory){
+    public SpotifyDockerClient(IContainerFactory<
+            com.spotify.docker.client.messages.Container,
+            com.spotify.docker.client.messages.ContainerStats> containerFactory){
         this.containerFactory = containerFactory;
     }
 
@@ -41,7 +46,12 @@ public class SpotifyDockerClient implements IDockerClient {
                     .build();
             List<com.spotify.docker.client.messages.Container> containerList =
                     docker.listContainers(com.spotify.docker.client.DockerClient.ListContainersParam.allContainers());
-            return containerFactory.translateContainers(containerList, user);
+            List<Container> reposeInstanceList = containerFactory.translateContainers(containerList, user);
+            for(Container reposeInstance: reposeInstanceList)
+                reposeInstance.setContainerStats(getReposeInstanceStats(cluster, reposeInstance.getId()));
+
+            return reposeInstanceList;
+
         } catch (DockerCertificateException | InterruptedException | DockerException e) {
             Logger.error("Unable to retrieve containers: " + e.getLocalizedMessage());
             e.printStackTrace();
@@ -79,6 +89,23 @@ public class SpotifyDockerClient implements IDockerClient {
         } catch (DockerCertificateException | DockerException | InterruptedException e) {
             e.printStackTrace();
             throw new InternalServerException(e.getMessage());
+        }
+    }
+
+    @Override
+    public ContainerStats getReposeInstanceStats(Cluster cluster, String containerId) throws InternalServerException {
+        final com.spotify.docker.client.DockerClient docker;
+        try {
+            docker = DefaultDockerClient.builder()
+                    .uri(URI.create(cluster.getUri()))
+                    .dockerCertificates(new DockerCertificates(Paths.get(cluster.getCert_directory())))
+                    .build();
+            com.spotify.docker.client.messages.ContainerStats containerStats = docker.stats(containerId);
+            return containerFactory.translateContainerStats(containerStats);
+        } catch (DockerCertificateException | InterruptedException | DockerException e) {
+            Logger.error("Unable to retrieve containers: " + e.getLocalizedMessage());
+            e.printStackTrace();
+            throw new InternalServerException(e.getLocalizedMessage());
         }
     }
 }

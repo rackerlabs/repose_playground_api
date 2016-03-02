@@ -19,6 +19,7 @@ GET        /app/auth                                    controllers.Login.index(
 GET        /app/repose/list                             controllers.Repose.list()
 GET        /app/repose/stop/:id                         controllers.Repose.stop(id)
 GET        /app/repose/start/:id                        controllers.Repose.start(id)
+GET        /app/repose/stats/:id                        controllers.Repose.stats(id)
 
 # Test
 POST       /app/test/:id                                controllers.Test.test(id)

@@ -33,6 +33,8 @@ public class Container {
     private String message;
     private String version;
     private String id;
+    private ContainerStats containerStats;
+
 
     public Container(String name, boolean isStarted, String message, String version, String id) {
         this.name = name;
@@ -64,12 +66,21 @@ public class Container {
         return id;
     }
 
+    public ContainerStats getContainerStats() {
+        return containerStats;
+    }
+
+    public void setContainerStats(ContainerStats containerStats) {
+        this.containerStats = containerStats;
+    }
+
     /**
      * Spin up a repose container
      * @param user
      * @param filters
      * @param version
      */
+    @Deprecated
     public String createReposeContainer(User user, Map<String, String> filters, String version) throws InternalServerException {
         Logger.debug("create repose instance " + user + " and version: " + version);
 
@@ -207,6 +218,7 @@ public class Container {
      * @param user
      * @param version
      */
+    @Deprecated
     public void createOriginContainer(User user, String version) throws InternalServerException {
         Logger.debug("create origin instance " + user);
 
@@ -304,4 +316,8 @@ public class Container {
         }
     }
 
+    @Deprecated
+    public void createThirdPartyContainer(User user, String version) {
+
+    }
 }

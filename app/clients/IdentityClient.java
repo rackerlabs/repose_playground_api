@@ -32,7 +32,7 @@ public class IdentityClient implements IIdentityClient {
     }
 
     public User getUser(LoginRequest loginRequest) throws UnauthorizedException, InternalServerException {
-        Logger.debug("making a request to get user");
+        Logger.debug("making a request to get user with " + validateUserUrl);
         F.Promise<User> resultPromise = wsClient.url(validateUserUrl)
                 .setContentType("application/json")
                 .post(Json.toJson(loginRequest)).map(

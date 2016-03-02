@@ -80,6 +80,7 @@ public class Container {
      * @param filters
      * @param version
      */
+    @Deprecated
     public String createReposeContainer(User user, Map<String, String> filters, String version) throws InternalServerException {
         Logger.debug("create repose instance " + user + " and version: " + version);
 
@@ -217,6 +218,7 @@ public class Container {
      * @param user
      * @param version
      */
+    @Deprecated
     public void createOriginContainer(User user, String version) throws InternalServerException {
         Logger.debug("create origin instance " + user);
 
@@ -314,4 +316,8 @@ public class Container {
         }
     }
 
+    @Deprecated
+    public void createThirdPartyContainer(User user, String version) {
+
+    }
 }

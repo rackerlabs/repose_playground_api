@@ -1,7 +1,6 @@
 package factories;
 
-import models.Container;
-import models.User;
+import models.*;
 import play.Logger;
 
 import java.util.ArrayList;
@@ -11,7 +10,9 @@ import java.util.regex.Pattern;
 /**
  * Created by dimi5963 on 2/29/16.
  */
-public class SpotifyContainerFactory implements IContainerFactory<com.spotify.docker.client.messages.Container> {
+public class SpotifyContainerFactory implements IContainerFactory<
+        com.spotify.docker.client.messages.Container,
+        com.spotify.docker.client.messages.ContainerStats> {
 
     /***
      * Translate containers from Spotify Docker containers to Containers
@@ -46,5 +47,40 @@ public class SpotifyContainerFactory implements IContainerFactory<com.spotify.do
         }
 
         return containerList;
+    }
+
+    @Override
+    public ContainerStats translateContainerStats(
+            com.spotify.docker.client.messages.ContainerStats containerStats) {
+        Logger.debug("Translate container stats");
+
+        return new ContainerStats(
+                translateCpuStats(containerStats.cpuStats()),
+                translateMemoryStats(containerStats.memoryStats()),
+                translateNetworkStats(containerStats.network()),
+                translateCpuStats(containerStats.precpuStats())
+                );
+    }
+
+    private CpuStats translateCpuStats(com.spotify.docker.client.messages.CpuStats cpuStats){
+        return new CpuStats(translateCpuUsage(cpuStats.cpuUsage()), cpuStats.systemCpuUsage());
+    }
+
+    private CpuUsage translateCpuUsage(com.spotify.docker.client.messages.CpuUsage cpuUsage) {
+        return new CpuUsage(
+                cpuUsage.percpuUsage(), cpuUsage.totalUsage(),
+                cpuUsage.usageInKernelmode(), cpuUsage.usageInUsermode());
+    }
+
+    private MemoryStats translateMemoryStats(com.spotify.docker.client.messages.MemoryStats memoryStats){
+        return new MemoryStats(memoryStats.usage(), memoryStats.maxUsage(),
+                memoryStats.limit(), memoryStats.failcnt());
+    }
+
+    private NetworkStats translateNetworkStats(com.spotify.docker.client.messages.NetworkStats networkStats){
+        return new NetworkStats(networkStats.rxBytes(), networkStats.rxPackets(),
+                networkStats.rxDropped(), networkStats.rxErrors(),
+                networkStats.txBytes(), networkStats.txPackets(),
+                networkStats.txDropped(), networkStats.txErrors());
     }
 }

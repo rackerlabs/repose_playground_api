@@ -1,17 +1,17 @@
 package services;
 
 import clients.IDockerClient;
+import com.google.common.collect.ImmutableList;
 import exceptions.InternalServerException;
 import factories.IClusterFactory;
-import models.Cluster;
-import models.Container;
-import models.User;
+import models.*;
 import org.joda.time.DateTime;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static junit.framework.Assert.assertEquals;
@@ -614,6 +614,222 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).stopReposeInstance(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    //testReposeStats
+
+    @Test
+    public void testStatsReposeSuccess() {
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        ContainerStats containerStats = new ContainerStats(
+                new CpuStats(
+                        new CpuUsage(ImmutableList.copyOf(Arrays.asList(1L)), 2L, 3L, 4L),
+                        5L
+                ),
+                new MemoryStats(1L, 2L, 3L, 4L),
+                new NetworkStats(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L),
+                new CpuStats(
+                        new CpuUsage(ImmutableList.copyOf(Arrays.asList(1L)), 2L, 3L, 4L),
+                        5L
+                )
+        );
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        try {
+            when(dockerClient.getReposeInstanceStats(any(), any())).thenReturn(containerStats);
+            ContainerStats returnedContainerStats =
+                    new ReposeService(clusterFactory, clusterService, dockerClient).getInstanceStats(user, "1");
+
+            assertEquals(containerStats, returnedContainerStats);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(dockerClient).getReposeInstanceStats(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testStatsReposeClusterNameNull() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        ContainerStats containerStats = new ContainerStats(
+                new CpuStats(
+                        new CpuUsage(ImmutableList.copyOf(Arrays.asList(1L)), 2L, 3L, 4L),
+                        5L
+                ),
+                new MemoryStats(1L, 2L, 3L, 4L),
+                new NetworkStats(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L),
+                new CpuStats(
+                        new CpuUsage(ImmutableList.copyOf(Arrays.asList(1L)), 2L, 3L, 4L),
+                        5L
+                )
+        );
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn(null);
+        when(dockerClient.getReposeInstanceStats(any(), any())).thenReturn(containerStats);
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("What cluster am I supposed to create?  Misconfigured.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).getInstanceStats(user, "1");
+
+
+        verify(clusterFactory).getClusterName();
+        verify(dockerClient).getReposeInstanceStats(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+    }
+
+    @Test
+    public void testStatsReposeClusterNull() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(null);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("No cluster found.  Cluster creation failed and didn't throw an error.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).getInstanceStats(user, "1");
+
+        verify(clusterFactory).getClusterName();
+        verify(dockerClient).getReposeInstanceStats(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testStatsReposeException() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        when(dockerClient.getReposeInstanceStats(any(), any())).
+                thenThrow(new InternalServerException("Failed to get stats."));
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Failed to get stats.");
+        new ReposeService(clusterFactory, clusterService, dockerClient).getInstanceStats(user, "1");
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(dockerClient).getReposeInstanceStats(any(), any());
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());

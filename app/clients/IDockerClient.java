@@ -4,6 +4,7 @@ import com.google.inject.ImplementedBy;
 import exceptions.InternalServerException;
 import models.Cluster;
 import models.Container;
+import models.ContainerStats;
 import models.User;
 
 import java.util.List;
@@ -19,5 +20,7 @@ public interface IDockerClient {
     boolean startReposeInstance(Cluster cluster, String containerId) throws InternalServerException;
 
     boolean stopReposeInstance(Cluster cluster, String containerId) throws InternalServerException;
+
+    ContainerStats getReposeInstanceStats(Cluster cluster, String containerId) throws InternalServerException;
 
 }

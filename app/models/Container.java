@@ -33,6 +33,8 @@ public class Container {
     private String message;
     private String version;
     private String id;
+    private ContainerStats containerStats;
+
 
     public Container(String name, boolean isStarted, String message, String version, String id) {
         this.name = name;
@@ -62,6 +64,14 @@ public class Container {
 
     public String getId() {
         return id;
+    }
+
+    public ContainerStats getContainerStats() {
+        return containerStats;
+    }
+
+    public void setContainerStats(ContainerStats containerStats) {
+        this.containerStats = containerStats;
     }
 
     /**

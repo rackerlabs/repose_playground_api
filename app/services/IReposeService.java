@@ -3,6 +3,7 @@ package services;
 import com.google.inject.ImplementedBy;
 import exceptions.InternalServerException;
 import models.Container;
+import models.ContainerStats;
 import models.User;
 
 import java.util.List;
@@ -18,5 +19,7 @@ public interface IReposeService {
     boolean stopReposeInstance(User user, String containerId) throws InternalServerException;
 
     boolean startReposeInstance(User user, String containerId) throws InternalServerException;
+
+    ContainerStats getInstanceStats(User user, String containerId) throws InternalServerException;
 
 }

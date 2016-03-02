@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.Inject;
 import exceptions.InternalServerException;
+import models.ContainerStats;
 import models.User;
 import play.Logger;
 import play.libs.Json;
@@ -110,7 +111,7 @@ public class Repose extends Controller {
      * @return
      */
     public Result start(String id) {
-        Logger.debug("Stop repose instance");
+        Logger.debug("Start repose instance");
 
         String token = request().getHeader("Token");
         Logger.debug("Check the user for " + token);
@@ -130,6 +131,50 @@ public class Repose extends Controller {
                     else
                         response.put("message", "failed to start");
                     return ok(Json.toJson(response));
+                } catch (InternalServerException ise) {
+                    ObjectNode response = JsonNodeFactory.instance.objectNode();
+                    response.put("message", ise.getLocalizedMessage());
+                    return internalServerError(Json.toJson(response));
+                }
+
+            } else {
+                Logger.debug("The only way this could have happened is if token timeout between " +
+                        "previous check and now.  Unlikely but possible.");
+                return unauthorized();
+            }
+
+        }
+    }
+
+    /***
+     * Repose stats will return running instance's stats
+     * @param id
+     * @return
+     */
+    public Result stats(String id) {
+        Logger.debug("Return repose instance stats");
+
+        String token = request().getHeader("Token");
+        Logger.debug("Check the user for " + token);
+        //check if expired
+        if(!userService.isValid(token)) {
+            Logger.warn("Invalid user: " + token);
+            return unauthorized();
+        } else {
+            //get user by token.
+            User user = userService.findByToken(token);
+            if (user != null) {
+
+                try {
+                    ContainerStats stats = reposeService.getInstanceStats(user, id);
+                    if(stats != null)
+                        return ok(Json.toJson(stats));
+                    else {
+                        ObjectNode response = JsonNodeFactory.instance.objectNode();
+                        response.put("message", "No stats found.");
+                        return ok(Json.toJson(response));
+                    }
+
                 } catch (InternalServerException ise) {
                     ObjectNode response = JsonNodeFactory.instance.objectNode();
                     response.put("message", ise.getLocalizedMessage());

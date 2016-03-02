@@ -9,7 +9,6 @@ create table cluster (
   cert_directory            varchar(1496) not null,
   name                      varchar(1000) not null,
   user                      bigint not null,
-  config_directory          varchar(255),
   constraint pk_cluster primary key (id))
 ;
 

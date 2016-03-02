@@ -75,21 +75,6 @@ public class User extends Model {
                 .findUnique();
     }
 
-    public static User findByTokenCurrent(String token) {
-        return find
-                .where()
-                .eq("token", token)
-                .gt("expireDate", DateTime.now())
-                .findUnique();
-    }
-
-    public static User findByName(String username) {
-        return find
-                .where()
-                .eq("username", username.toLowerCase())
-                .findUnique();
-    }
-
     @Deprecated
     public static User findByToken(String token) {
         return find

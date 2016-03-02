@@ -26,23 +26,19 @@ public class Cluster extends Model {
     @Column(nullable = false)
     public Long user;
 
-    @Column(nullable = true)
-    public String config_directory;
-
     public void setUri(String uri) { this.uri = uri; }
     public void setCert_directory(String cert_directory) { this.cert_directory = cert_directory; }
-    public void setConfig_directory(String config_directory) { this.config_directory = config_directory; }
     public void setUser(Long user) { this.user = user; }
     public void setName(String name) { this.name = name; }
 
     public String getName() { return name; }
     public String getUri() { return uri; }
     public String getCert_directory() { return cert_directory; }
-    public String getConfig_directory() { return config_directory; }
 
     public static final Finder<Long, Cluster> find = new Finder<Long, Cluster>(
             Long.class, Cluster.class);
 
+    @Deprecated
     public static Cluster findByUserandName(Long userId, String name) {
         return find
                 .where()
@@ -62,8 +58,6 @@ public class Cluster extends Model {
         carinaBuilder.append(name);
         carinaBuilder.append("cert_directory => ");
         carinaBuilder.append(cert_directory);
-        carinaBuilder.append("config_directory => ");
-        carinaBuilder.append(config_directory);
         carinaBuilder.append("uri => ");
         carinaBuilder.append(uri);
 

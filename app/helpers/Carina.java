@@ -12,6 +12,7 @@ import play.libs.ws.WSResponse;
  * Created by dimi5963 on 2/9/16.
  */
 public class Carina {
+    @Deprecated
     public JsonNode getCluster(String clusterName, User user) throws InternalServerException {
         F.Promise<JsonNode> result = WS.url("https://app.getcarina.com/clusters/" +
                 user.username + "/" + clusterName)

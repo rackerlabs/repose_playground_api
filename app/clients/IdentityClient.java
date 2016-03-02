@@ -24,7 +24,8 @@ public class IdentityClient implements IIdentityClient {
     private final String validateUserUrl;
 
     @Inject
-    public IdentityClient(IIdentityFactory identityFactory, IUserRepository userRepository){
+    public IdentityClient(IIdentityFactory identityFactory,
+                          IUserRepository userRepository){
         this.identityFactory = identityFactory;
         this.userRepository = userRepository;
         this.validateUserUrl = identityFactory.getIdentityAuthUrl();

@@ -20,6 +20,8 @@ libraryDependencies += "com.spotify" % "docker-client" % "3.5.1"
 libraryDependencies += "org.mockito" % "mockito-all" % "1.10.19"
 
 jacoco.settings
+parallelExecution in jacoco.Config := false
+
 jacoco.reportFormats in jacoco.Config := Seq(
   XMLReport(encoding = "utf-8"),
   ScalaHTMLReport(withBranchCoverage = true))

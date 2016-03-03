@@ -37,6 +37,7 @@ import java.util.zip.ZipEntry;
 /**
  * Created by dimi5963 on 8/15/15.
  */
+@Deprecated
 public class Helpers {
 
     private static List<String> nativeElements = Arrays.asList("string", "double", "boolean", "anyURI");
@@ -594,6 +595,7 @@ public class Helpers {
 
     }
 
+    @Deprecated
     public static Path getReposeConfigDirectory(String tenant) throws IOException{
         try {
             return Files.createDirectories(getReposeImageDirectory(tenant).resolve("repose_config"));
@@ -603,6 +605,7 @@ public class Helpers {
         }
     }
 
+    @Deprecated
     public static Path getReposeImageDirectory(String tenant) throws IOException{
         try {
             return Files.createDirectories(getCarinaDirectory(tenant).resolve("repose_image"));
@@ -612,6 +615,7 @@ public class Helpers {
         }
     }
 
+    @Deprecated
     public static Path getOriginImageDirectory(String tenant) throws IOException{
         try {
             return Files.createDirectories(getCarinaDirectory(tenant).resolve("origin_image"));

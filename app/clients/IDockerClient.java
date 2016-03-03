@@ -3,6 +3,7 @@ package clients;
 import com.google.inject.ImplementedBy;
 import exceptions.InternalServerException;
 import models.Cluster;
+import models.Configuration;
 import models.Container;
 import models.ContainerStats;
 import models.User;
@@ -23,4 +24,10 @@ public interface IDockerClient {
 
     ContainerStats getReposeInstanceStats(Cluster cluster, String containerId) throws InternalServerException;
 
+    List<Configuration> getConfigurationsForInstance(Cluster cluster, String containerId) throws InternalServerException;
+
+    String createOriginInstance(Cluster cluster, User user, String versionId) throws InternalServerException;
+
+    String createReposeInstance(Cluster cluster, User user, String versionId,
+                                List<Configuration> configurationList) throws InternalServerException;
 }

@@ -11,6 +11,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import javax.ws.rs.HEAD;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +23,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.*;
 
 /**
@@ -136,7 +138,7 @@ public class ReposeServiceTest {
         exception.expect(InternalServerException.class);
         exception.expectMessage("What cluster am I supposed to create?  Misconfigured.");
         new ReposeService(clusterFactory, clusterService, dockerClient,
-                environmentService,configurationFactory).getReposeList(user);
+                environmentService, configurationFactory).getReposeList(user);
 
 
         verify(clusterFactory).getClusterName();
@@ -698,6 +700,7 @@ public class ReposeServiceTest {
 
         try {
             when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+            when(dockerClient.getReposeInstanceStats(any(), any())).thenReturn(containerStats);
         }catch(InternalServerException e ){
             fail(e.getLocalizedMessage());
         }
@@ -705,7 +708,6 @@ public class ReposeServiceTest {
         when(clusterFactory.getClusterName()).thenReturn("fake-name");
 
         try {
-            when(dockerClient.getReposeInstanceStats(any(), any())).thenReturn(containerStats);
             ContainerStats returnedContainerStats =
                     new ReposeService(clusterFactory, clusterService, dockerClient,
                             environmentService, configurationFactory).getInstanceStats(user, "1");
@@ -720,6 +722,458 @@ public class ReposeServiceTest {
         try{
             verify(dockerClient).getReposeInstanceStats(any(), any());
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    //testSetupReposeEnvironment
+
+    @Test
+    public void testSetupReposeEnvironmentGeneratedOriginSuccess() {
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        String reposeId = "fake-repose-id";
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+            when(environmentService.generatedOriginEnvironment(
+                    any(), anyString(), any(), any())).thenReturn(reposeId);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        try {
+            assertEquals(reposeId, new ReposeService(clusterFactory, clusterService, dockerClient,
+                    environmentService,
+                    configurationFactory).setUpReposeEnvironment(
+                    ReposeEnvironmentType.GENERATED_ORIGIN, user, "1", configurationList));
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentGeneratedThirdPartiesSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Currently not implemented.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.GENERATED_THIRDPARTIES, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService, never()).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentMixedThirdPartiesSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Currently not implemented.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.MIXED_THIRD_PARTIES, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService, never()).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentSpecifiedOriginSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Currently not implemented.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.SPECIFIED_ORIGIN, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService, never()).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentSpecifiedOriginGeneratedThirdPartiesSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Currently not implemented.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.SPECIFIED_ORIGIN_GENERATED_THIRD_PARTIES, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService, never()).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentSpecifiedOriginMixedThirdPartiesSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Currently not implemented.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.SPECIFIED_ORIGIN_MIXED_THIRD_PARTIES, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService, never()).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentSpecifiedOriginSpecifiedThirdPartiesSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Currently not implemented.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.SPECIFIED_ORIGIN_SPECIFIED_THIRD_PARTIES, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService, never()).generatedOriginEnvironment(any(), anyString(), any(), any());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentNullTypeSuccess() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        String reposeId = "fake-repose-id";
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+            when(environmentService.generatedOriginEnvironment(
+                    any(), anyString(), any(), any())).thenReturn(reposeId);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Environment type not defined.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService,
+                configurationFactory).setUpReposeEnvironment(
+                null, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+            verify(environmentService).generatedOriginEnvironment(any(), anyString(), any(), any());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());
         }
@@ -769,8 +1223,8 @@ public class ReposeServiceTest {
         }
 
         when(clusterFactory.getClusterName()).thenReturn(null);
-        when(dockerClient.getReposeInstanceStats(any(), any())).thenReturn(containerStats);
 
+        when(dockerClient.getReposeInstanceStats(any(), any())).thenReturn(containerStats);
         exception.expect(InternalServerException.class);
         exception.expectMessage("What cluster am I supposed to create?  Misconfigured.");
         new ReposeService(clusterFactory, clusterService, dockerClient,
@@ -779,6 +1233,61 @@ public class ReposeServiceTest {
 
         verify(clusterFactory).getClusterName();
         verify(dockerClient).getReposeInstanceStats(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentClusterNameNull() throws InternalServerException{
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn(null);
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("What cluster am I supposed to create?  Misconfigured.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService, configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.GENERATED_ORIGIN, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
 
         try{
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
@@ -818,7 +1327,6 @@ public class ReposeServiceTest {
         }
 
         when(clusterFactory.getClusterName()).thenReturn("fake-name");
-
         exception.expect(InternalServerException.class);
         exception.expectMessage("No cluster found.  Cluster creation failed and didn't throw an error.");
         new ReposeService(clusterFactory, clusterService, dockerClient,
@@ -826,6 +1334,63 @@ public class ReposeServiceTest {
 
         verify(clusterFactory).getClusterName();
         verify(dockerClient).getReposeInstanceStats(any(), any());
+
+        try{
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentClusterNull() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(null);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("No cluster found.  Cluster creation failed and didn't throw an error.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService, configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.GENERATED_ORIGIN, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
 
         try{
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
@@ -879,6 +1444,66 @@ public class ReposeServiceTest {
 
         try{
             verify(dockerClient).getReposeInstanceStats(any(), any());
+            verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
+        } catch (InternalServerException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+    }
+
+    @Test
+    public void testSetupReposeEnvironmentException() throws InternalServerException{
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        //mock list
+        List<Configuration> configurationList = new ArrayList<Configuration>(){
+            {
+                add(new Configuration("filter-name", "filter-xml"));
+                add(new Configuration("filter-name2", "filter-xml2"));
+                add(new Configuration("filter-name3", "filter-xml3"));
+            }
+        };
+
+        IClusterService clusterService = mock(IClusterService.class);
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        EnvironmentService environmentService = mock(EnvironmentService.class);
+        ConfigurationFactory configurationFactory = mock(ConfigurationFactory.class);
+
+        try {
+            when(clusterService.getClusterByName(anyString(), any(), anyBoolean())).thenReturn(cluster);
+        }catch(InternalServerException e ){
+            fail(e.getLocalizedMessage());
+        }
+
+        when(clusterFactory.getClusterName()).thenReturn("fake-name");
+
+        when(environmentService.generatedOriginEnvironment(any(), any(), any(), any())).
+                thenThrow(new InternalServerException("Setup repose environment."));
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Setup repose environment.");
+        new ReposeService(clusterFactory, clusterService, dockerClient,
+                environmentService, configurationFactory).setUpReposeEnvironment(
+                ReposeEnvironmentType.GENERATED_ORIGIN, user, "1", configurationList);
+
+        verify(clusterFactory).getClusterName();
+
+        try{
             verify(clusterService).getClusterByName(anyString(), any(), anyBoolean());
         } catch (InternalServerException e) {
             fail(e.getLocalizedMessage());

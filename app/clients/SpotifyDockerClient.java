@@ -249,6 +249,8 @@ public class SpotifyDockerClient implements IDockerClient {
                                        String versionId, List<Configuration> configurationList)
             throws InternalServerException {
         Logger.debug("create repose instance " + user + " and version: " + versionId);
+        if(configurationList == null)
+            throw new InternalServerException("Must provide at least core configs.");
         final com.spotify.docker.client.DockerClient docker;
         try {
             docker = DefaultDockerClient.builder()

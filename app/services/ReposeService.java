@@ -125,9 +125,9 @@ public class ReposeService implements IReposeService {
     public String setUpReposeEnvironment(ReposeEnvironmentType reposeEnvironmentType,
                                          User user, String versionId, List<Configuration> configurationList)
             throws InternalServerException {
-        //create repose container
-        //create origin container
         Logger.debug("Set up repose instance for version " + versionId + " with type " + reposeEnvironmentType);
+        if(reposeEnvironmentType == null)
+            throw new InternalServerException("Environment type not defined.");
 
         Logger.debug("We want to create the cluster if it doesn't already exist");
         boolean createClusterIfDNE = true;

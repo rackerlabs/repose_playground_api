@@ -17,6 +17,7 @@ import services.ConfigurationService;
 import services.IReposeService;
 import services.IUserService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -63,7 +64,12 @@ public class Configuration extends Controller {
             if(user != null) {
 
                 try {
-                    return ok(Json.toJson(configurationService.getConfigurationsForInstance(user, id)));
+                    List<models.Configuration> configurationList =
+                            configurationService.getConfigurationsForInstance(user, id);
+                    if(configurationList != null)
+                        return ok(Json.toJson(configurationList));
+                    else
+                        return ok(Json.toJson(new ArrayList<models.Configuration>()));
                 } catch(InternalServerException ise) {
                     ObjectNode response = JsonNodeFactory.instance.objectNode();
                     response.put("message", ise.getLocalizedMessage());
@@ -110,11 +116,21 @@ public class Configuration extends Controller {
 
                     String reposeId = reposeService.setUpReposeEnvironment(ReposeEnvironmentType.GENERATED_ORIGIN,
                             user, id, configurationList);
+                    if(reposeId == null) {
+                        ObjectNode response = JsonNodeFactory.instance.objectNode();
+                        response.put("message", "unable to create repose environment.");
+                        return internalServerError(Json.toJson(response));
+                    } else {
+                        ObjectNode response = JsonNodeFactory.instance.objectNode();
+                        response.put("message", "success");
+                        response.put("id", reposeId);
+                        return ok(Json.toJson(response));
+                    }
+                } catch(NotFoundException nfe){
                     ObjectNode response = JsonNodeFactory.instance.objectNode();
-                    response.put("message", "success");
-                    response.put("id", reposeId);
-                    return ok(Json.toJson(response));
-                } catch(NotFoundException | InternalServerException ise) {
+                    response.put("message", nfe.getLocalizedMessage());
+                    return badRequest(Json.toJson(response));
+                } catch (InternalServerException ise) {
                     ObjectNode response = JsonNodeFactory.instance.objectNode();
                     response.put("message", ise.getLocalizedMessage());
                     return internalServerError(Json.toJson(response));

@@ -320,6 +320,56 @@ public class ClusterServiceTest {
     }
 
     @Test
+    public void testGetClusterByNameGetClusterInterruptedException() throws InternalServerException {
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+        user.id = 1L;
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IClusterFactory clusterFactory = mock(IClusterFactory.class);
+        IClusterRepository clusterRepository = mock(IClusterRepository.class);
+        ICarinaClient carinaClient = mock(ICarinaClient.class);
+
+        when(clusterRepository.findByUserandName(anyLong(), anyString())).thenReturn(null);
+
+        try {
+            when(carinaClient.getClusterWithZip(any(), anyString())).thenReturn(cluster);
+            when(carinaClient.getCluster(anyString(), any())).thenReturn(null);;
+            when(carinaClient.createCluster(anyString(), any())).
+                    thenThrow(new InterruptedException("interrupted creation"));
+        }catch(NotFoundException | InternalServerException | InterruptedException e) {
+            fail(e.getLocalizedMessage());
+        }
+
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("interrupted creation");
+        new ClusterService(clusterRepository, carinaClient, clusterFactory)
+                .getClusterByName("fake-cluster", user, true);
+
+
+        verify(clusterRepository).findByUserandName(anyLong(), anyString());
+
+        try {
+            verify(carinaClient).getClusterWithZip(any(), anyString());
+            verify(carinaClient).getCluster(anyString(), any());
+            verify(carinaClient).createCluster(anyString(), any());
+        }catch(NotFoundException | InternalServerException | InterruptedException e) {
+            fail(e.getLocalizedMessage());
+        }
+    }
+
+    @Test
     public void testGetClusterByNameGetClusterNullNotCreateIfDNE()
             throws InternalServerException, NotFoundException, InterruptedException {
         //set up mock user

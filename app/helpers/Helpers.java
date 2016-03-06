@@ -1,6 +1,5 @@
 package helpers;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import models.Filter;
 import models.User;
 import org.json.JSONArray;
@@ -10,10 +9,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 import play.Logger;
-import play.libs.Json;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -24,7 +20,6 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -566,15 +561,6 @@ public class Helpers {
 
     }
 
-
-    public static ObjectNode buildJsonResponse(String type, String message) {
-        ObjectNode wrapper = Json.newObject();
-        ObjectNode msg = Json.newObject();
-        msg.put("message", message);
-        wrapper.put(type, msg);
-        return wrapper;
-    }
-
     @Deprecated
     public static boolean createFileInCarina(ZipEntry file, StringWriter data, User user){
         try {
@@ -930,38 +916,8 @@ public class Helpers {
 
     }
 
-    public static String updateSystemModelXml(User user, String versionId, String systemModelContent){
-        //get new doc builder
-        Document document = null;
-        try {
-            document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
-                    new InputSource(new StringReader( systemModelContent))
-            );
-        } catch (SAXException | ParserConfigurationException | IOException e) {
-            e.printStackTrace();
-        }
-
-        //get nodes and update port to 8080
-        NodeList nodeList = document.getElementsByTagName("node");
-        for(int nodeId = 0; nodeId < nodeList.getLength(); nodeId ++ ){
-            nodeList.item(nodeId).getAttributes().getNamedItem("http-port").setTextContent("8080");
-        }
-
-        //get nodes and update destination hostname and port to 8000
-        NodeList endpointList = document.getElementsByTagName("endpoint");
-        for(int endpointId = 0; endpointId < endpointList.getLength(); endpointId ++ ){
-            endpointList.item(endpointId).getAttributes().getNamedItem("port").setTextContent("8000");
-            endpointList.item(endpointId).getAttributes().getNamedItem("hostname").
-                    setTextContent("repose-origin-" + user.tenant + "-" + versionId.replace('.','-'));
-        }
-
-        Logger.info("Updated system model: " + convertDocumentToString(document));
-
-        return convertDocumentToString(document);
-
-    }
-
-
+    @Deprecated
+    //TODO: refactor and get main element out
     public static Element addAppenders(Document document, String appender, Map<String, String> attributes ){
         Element rollingFileAppender = document.createElement(appender);
         attributes.forEach((attrName, attrValue) ->

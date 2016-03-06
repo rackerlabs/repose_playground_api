@@ -16,4 +16,10 @@ public interface ConfigurationFactory {
 
     List<Configuration> translateConfigurations(User user, String reposeVersion, Http.MultipartFormData body)
             throws NotFoundException;
+
+    String updateSystemModelXml(User user, String versionId, String systemModelContent);
+
+    String generateContainerXml(int majorVersion);
+
+    String generateLoggingXml(int majorVersion);
 }

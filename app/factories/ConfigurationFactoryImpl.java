@@ -1,6 +1,7 @@
 package factories;
 
 import com.google.inject.Inject;
+import exceptions.InternalServerException;
 import exceptions.NotFoundException;
 import helpers.Helpers;
 import models.Configuration;
@@ -37,8 +38,15 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
     }
 
     @Override
-    public List<Configuration> translateConfigurations(User user, String reposeVersion, Http.MultipartFormData body)
-            throws NotFoundException {
+    public List<Configuration> translateConfigurations(User user, String reposeVersion,
+                                                       Http.MultipartFormData body)
+            throws NotFoundException, InternalServerException {
+        Logger.debug("Translate configurations for " + user + ", version " + reposeVersion);
+        try{
+            Integer.parseInt(reposeVersion);
+        } catch(NumberFormatException nfe) {
+            throw new InternalServerException("Invalid version specified.");
+        }
         if(body.getFiles() != null && body.getFiles().size() > 0) {
             int majorVersion = Integer.parseInt(reposeVersion.split(Pattern.quote("."))[0]);
             //get the first one.  others don't matter since it's a single file upload
@@ -48,7 +56,7 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             List<Configuration> filterXml = unzip(reposeZip.getFile());
             filterXml.forEach(configuration -> {
                 if (configuration.getName().equals("system-model.cfg.xml")) {
-                    Logger.info("update system model listening node and destination");
+                    Logger.debug("update system model listening node and destination");
                     String content = configuration.getXml();
                     configuration.setXml(updateSystemModelXml(user, reposeVersion, content));
                 } else if (configuration.getName().equals("container.cfg.xml")) {
@@ -345,8 +353,8 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             byte[] buffer = new byte[1024];
             int read = 0;
             while ((zipEntry = zis.getNextEntry())!= null) {
+                Logger.debug("read " + zipEntry.getName());
                 StringBuilder s = new StringBuilder();
-                Logger.info("read " + zipEntry.getName());
                 while ((read = zis.read(buffer, 0, 1024)) >= 0) {
                     s.append(new String(buffer, 0, read));
                 }

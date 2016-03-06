@@ -1,6 +1,7 @@
 package factories;
 
 import com.google.inject.ImplementedBy;
+import exceptions.InternalServerException;
 import exceptions.NotFoundException;
 import models.Configuration;
 import models.User;
@@ -15,7 +16,7 @@ import java.util.List;
 public interface ConfigurationFactory {
 
     List<Configuration> translateConfigurations(User user, String reposeVersion, Http.MultipartFormData body)
-            throws NotFoundException;
+            throws NotFoundException, InternalServerException;
 
     String updateSystemModelXml(User user, String versionId, String systemModelContent);
 

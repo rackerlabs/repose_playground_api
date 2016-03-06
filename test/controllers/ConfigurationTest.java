@@ -640,7 +640,7 @@ public class ConfigurationTest extends WithApplication {
             try {
                 when(configurationFactoryMock.translateConfigurations(any(), anyString(), any())).
                         thenThrow(new NotFoundException("Configurations Not found"));
-            }catch(NotFoundException ise){
+            }catch(NotFoundException | InternalServerException ise){
                 fail(ise.getLocalizedMessage());
             }
 

@@ -16,8 +16,6 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
 
 /**
  * Created by dimi5963 on 3/5/16.
@@ -53,18 +51,48 @@ public class ConfigurationFactoryImplTest {
             }
         };
 
-
-        XmlFactory xmlFactory = mock(XmlFactory.class);
-        when(xmlFactory.convertDocumentToString(any())).thenReturn("test");
-
         List<Configuration> configurationList =
-                new ConfigurationFactoryImpl(xmlFactory).translateConfigurations(user, "1", multipartFormData);
+                new ConfigurationFactoryImpl(new XmlFactoryImpl()).
+                        translateConfigurations(user, "1", multipartFormData);
 
         //includes mac osx zipped files.
         assertEquals(14, configurationList.size());
         assertNotNull(configurationList.stream().filter(t -> "system-model.cfg.xml".equals(t.getName())));
+    }
 
-        verify(xmlFactory, times(3)).convertDocumentToString(any());
+    @Test
+    public void testTranslateConfigurationsSuccessVersion7() throws Exception {
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+
+        Http.MultipartFormData multipartFormData = new Http.MultipartFormData() {
+            @Override
+            public Map<String, String[]> asFormUrlEncoded() {
+                return null;
+            }
+
+            @Override
+            public List<FilePart> getFiles() {
+                return new ArrayList<FilePart>(){
+                    {
+                        add(new Http.MultipartFormData.FilePart("repose","repose.zip",
+                                "application/gzip",new File("test/test_data/repose.zip")));
+                    }
+                };
+            }
+        };
+
+        List<Configuration> configurationList =
+                new ConfigurationFactoryImpl(new XmlFactoryImpl()).
+                        translateConfigurations(user, "7", multipartFormData);
+
+        //includes mac osx zipped files.
+        assertEquals(14, configurationList.size());
+        assertNotNull(configurationList.stream().filter(t -> "system-model.cfg.xml".equals(t.getName())));
     }
 
     @Test
@@ -75,15 +103,6 @@ public class ConfigurationFactoryImplTest {
         user.setToken("fake-token");
         user.setUserid("1");
         user.setUsername("fake-user");
-
-        //mock list
-        List<models.Configuration> configurationList = new ArrayList<models.Configuration>(){
-            {
-                add(new models.Configuration("filter-name", "filter-xml"));
-                add(new models.Configuration("filter-name2", "filter-xml2"));
-                add(new models.Configuration("filter-name3", "filter-xml3"));
-            }
-        };
 
         Http.MultipartFormData multipartFormData = new Http.MultipartFormData() {
             @Override
@@ -102,15 +121,11 @@ public class ConfigurationFactoryImplTest {
             }
         };
 
-
-        XmlFactory xmlFactory = mock(XmlFactory.class);
-        when(xmlFactory.convertDocumentToString(any())).thenReturn("test");
-
         exception.expect(InternalServerException.class);
         exception.expectMessage("Invalid version specified.");
-        new ConfigurationFactoryImpl(xmlFactory).translateConfigurations(user, "xxx", multipartFormData);
+        new ConfigurationFactoryImpl(new XmlFactoryImpl()).
+                translateConfigurations(user, "xxx", multipartFormData);
 
-        verify(xmlFactory).convertDocumentToString(any());
     }
 
     @Test
@@ -121,15 +136,6 @@ public class ConfigurationFactoryImplTest {
         user.setToken("fake-token");
         user.setUserid("1");
         user.setUsername("fake-user");
-
-        //mock list
-        List<models.Configuration> configurationList = new ArrayList<models.Configuration>(){
-            {
-                add(new models.Configuration("filter-name", "filter-xml"));
-                add(new models.Configuration("filter-name2", "filter-xml2"));
-                add(new models.Configuration("filter-name3", "filter-xml3"));
-            }
-        };
 
         Http.MultipartFormData multipartFormData = new Http.MultipartFormData() {
             @Override
@@ -143,14 +149,9 @@ public class ConfigurationFactoryImplTest {
             }
         };
 
-
-        XmlFactory xmlFactory = mock(XmlFactory.class);
-        when(xmlFactory.convertDocumentToString(any())).thenReturn("test");
-
         exception.expect(NotFoundException.class);
         exception.expectMessage("No zip files");
-        new ConfigurationFactoryImpl(xmlFactory).translateConfigurations(user, "1", multipartFormData);
-
-        verify(xmlFactory).convertDocumentToString(any());
+        new ConfigurationFactoryImpl(new XmlFactoryImpl()).
+                translateConfigurations(user, "7", multipartFormData);
     }
 }

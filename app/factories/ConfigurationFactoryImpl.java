@@ -3,7 +3,6 @@ package factories;
 import com.google.inject.Inject;
 import exceptions.InternalServerException;
 import exceptions.NotFoundException;
-import helpers.Helpers;
 import models.Configuration;
 import models.User;
 import org.w3c.dom.Document;
@@ -14,13 +13,11 @@ import org.xml.sax.SAXException;
 import play.Logger;
 import play.mvc.Http;
 
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -31,10 +28,21 @@ import java.util.zip.ZipInputStream;
 public class ConfigurationFactoryImpl implements ConfigurationFactory {
 
     private final XmlFactory xmlFactory;
+    private final DocumentBuilder documentBuilder;
+
+
 
     @Inject
-    public ConfigurationFactoryImpl(XmlFactory xmlFactory) {
+    public ConfigurationFactoryImpl(XmlFactory xmlFactory)
+            throws InternalServerException{
         this.xmlFactory = xmlFactory;
+        try {
+            this.documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+        } catch (ParserConfigurationException pce) {
+            Logger.warn("Unable to create document builder");
+            throw new InternalServerException("Unable to create document builder");
+        }
+
     }
 
     @Override
@@ -54,19 +62,26 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             Logger.debug("get file for: " + reposeZip.getFile().getAbsolutePath());
 
             List<Configuration> filterXml = unzip(reposeZip.getFile());
-            filterXml.forEach(configuration -> {
-                if (configuration.getName().equals("system-model.cfg.xml")) {
-                    Logger.debug("update system model listening node and destination");
-                    String content = configuration.getXml();
-                    configuration.setXml(updateSystemModelXml(user, reposeVersion, content));
-                } else if (configuration.getName().equals("container.cfg.xml")) {
-                    Logger.debug("update container config");
-                    configuration.setXml(generateContainerXml(majorVersion));
-                } else if (configuration.getName().equals("log4j2.xml") ||
-                        configuration.getName().equals("log4j.properties")) {
-                    configuration.setXml(generateLoggingXml(majorVersion));
+            for(Configuration configuration: filterXml){
+                switch (configuration.getName()) {
+                    case "system-model.cfg.xml":
+                        Logger.debug("update system model listening node and destination");
+                        String content = configuration.getXml();
+                        configuration.setXml(updateSystemModelXml(user, reposeVersion, content));
+                        break;
+                    case "container.cfg.xml":
+                        Logger.debug("update container config");
+                        configuration.setXml(generateContainerXml(majorVersion));
+                        break;
+                    case "log4j2.xml":
+                    case "log4j.properties":
+                        Logger.debug("update logging config");
+                        configuration.setXml(generateLoggingXml(majorVersion));
+                        break;
+                    default:
+                        Logger.debug("configuration file " + configuration.getName() + " is ignored");
                 }
-            });
+            }
 
             return  filterXml;
         }
@@ -75,15 +90,18 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
     }
 
     @Override
-    public String updateSystemModelXml(User user, String versionId, String systemModelContent) {
+    public String updateSystemModelXml(User user, String versionId, String systemModelContent)
+            throws InternalServerException {
         //get new doc builder
-        Document document = null;
+        Document document;
         try {
-            document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
+            document = this.documentBuilder.parse(
                     new InputSource(new StringReader( systemModelContent))
             );
-        } catch (SAXException | ParserConfigurationException | IOException e) {
+        } catch (SAXException | IOException e) {
+            Logger.error("Unable to create xml document");
             e.printStackTrace();
+            throw new InternalServerException("Unable to parse system model");
         }
 
         //get nodes and update port to 8080
@@ -100,21 +118,16 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
                     setTextContent("repose-origin-" + user.tenant + "-" + versionId.replace('.','-'));
         }
 
-        Logger.info("Updated system model: " + xmlFactory.convertDocumentToString(document));
+        Logger.debug("Updated system model: " + xmlFactory.convertDocumentToString(document));
 
         return xmlFactory.convertDocumentToString(document);
     }
 
     @Override
-    public String generateContainerXml(int majorVersion) {
+    public String generateContainerXml(int majorVersion) throws InternalServerException{
         //get new doc builder
-        Document document = null;
-        try {
-            document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
-        } catch (ParserConfigurationException e) {
-            e.printStackTrace();
-        }
-        Element rootElement = null;
+        Document document = this.documentBuilder.newDocument();
+        Element rootElement;
         if(majorVersion >= 7)
             rootElement = document.createElementNS("http://docs.openrepose.org/repose/container/v2.0",
                     "repose-container");
@@ -151,20 +164,19 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             loggingConfiguration.setAttribute("href", "log4j.properties");
         deploymentConfig.appendChild(loggingConfiguration);
 
+
+        Logger.debug("Updated container: " + xmlFactory.convertDocumentToString(document));
+
         return xmlFactory.convertDocumentToString(document);
     }
 
     @Override
-    public String generateLoggingXml(int majorVersion) {
+    public String generateLoggingXml(int majorVersion) throws InternalServerException{
         if(majorVersion >= 7) {
             //log4j2.xml
             //get new doc builder
-            Document document = null;
-            try {
-                document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
-            } catch (ParserConfigurationException e) {
-                e.printStackTrace();
-            }
+            Document document = this.documentBuilder.newDocument();
+
             Element rootElement = document.createElement("Configuration");
             rootElement.setAttribute("monitorInterval", "15");
             document.appendChild(rootElement);
@@ -180,62 +192,164 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             patternLayout.setAttribute("pattern", "%d %-4r [%t] %-5p %c - %m%n");
             consoleAppender.appendChild(patternLayout);
 
-            appenders.appendChild(Helpers.addAppenders(document, "RollingFile", new HashMap<String, String>() {
+            appenders.appendChild(xmlFactory.addElement(document, "RollingFile", new HashMap<String, String>() {
                 {
                     put("name", "MainRollingFile");
                     put("fileName", "/var/log/repose/current.log");
                     put("filePattern", "/var/log/repose/current-%d{yyyy-MM-dd_HHmmss}.log");
                 }
+            }, new ArrayList<Element>(){
+                {
+                    add(xmlFactory.addElement(document, "PatternLayout", new HashMap<String, String>() {
+                        {
+                            put("pattern", "%d %-4r [%t] %-5p %c - %m%n");
+                        }
+                    }, Optional.empty()));
+                    add(xmlFactory.addElement(document, "Policies", new HashMap<>(),
+                            new ArrayList<Element>() {
+                        {
+                            add(xmlFactory.addElement(document, "SizeBasedTriggeringPolicy",
+                                    new HashMap<String, String>() {
+                                        {
+                                            put("size", "200 MB");
+                                        }
+                                    }, Optional.empty()));
+                        }
+                            }
+                    ));
+                    add(xmlFactory.addElement(document, "DefaultRolloverStrategy",
+                            new HashMap<String, String>() {
+                                {
+                                    put("max", "2");
+                                }
+                            }, Optional.empty()));
+                }
             }));
 
-            appenders.appendChild(Helpers.addAppenders(document, "RollingFile", new HashMap<String, String>() {
+            appenders.appendChild(xmlFactory.addElement(document, "RollingFile", new HashMap<String, String>() {
                 {
                     put("name", "IntraFilterRollingFile");
                     put("fileName", "/var/log/repose/intra-filter.log");
                     put("filePattern", "/var/log/repose/intra-filter-%d{yyyy-MM-dd_HHmmss}.log");
                 }
+            }, new ArrayList<Element>(){
+                {
+                    add(xmlFactory.addElement(document, "PatternLayout", new HashMap<String, String>() {
+                        {
+                            put("pattern", "%d %-4r [%t] %-5p %c - %m%n");
+                        }
+                    }, Optional.empty()));
+                    add(xmlFactory.addElement(document, "Policies", new HashMap<>(),
+                            new ArrayList<Element>() {
+                                {
+                                    add(xmlFactory.addElement(document, "SizeBasedTriggeringPolicy",
+                                            new HashMap<String, String>() {
+                                                {
+                                                    put("size", "200 MB");
+                                                }
+                                            }, Optional.empty()));
+                                }
+                            }
+                    ));
+                    add(xmlFactory.addElement(document, "DefaultRolloverStrategy",
+                            new HashMap<String, String>() {
+                                {
+                                    put("max", "2");
+                                }
+                            }, Optional.empty()));
+                }
             }));
 
-            appenders.appendChild(Helpers.addAppenders(document, "RollingFile", new HashMap<String, String>() {
+            appenders.appendChild(xmlFactory.addElement(document, "RollingFile", new HashMap<String, String>() {
                 {
                     put("name", "HttpRollingFile");
                     put("fileName", "/var/log/repose/http-debug.log");
                     put("filePattern", "/var/log/repose/http-debug-%d{yyyy-MM-dd_HHmmss}.log");
                 }
+            }, new ArrayList<Element>(){
+                {
+                    add(xmlFactory.addElement(document, "PatternLayout", new HashMap<String, String>() {
+                        {
+                            put("pattern", "%d %-4r [%t] %-5p %c - %m%n");
+                        }
+                    }, Optional.empty()));
+                    add(xmlFactory.addElement(document, "Policies", new HashMap<>(),
+                            new ArrayList<Element>() {
+                                {
+                                    add(xmlFactory.addElement(document, "SizeBasedTriggeringPolicy",
+                                            new HashMap<String, String>() {
+                                                {
+                                                    put("size", "200 MB");
+                                                }
+                                            }, Optional.empty()));
+                                }
+                            }
+                    ));
+                    add(xmlFactory.addElement(document, "DefaultRolloverStrategy",
+                            new HashMap<String, String>() {
+                                {
+                                    put("max", "2");
+                                }
+                            }, Optional.empty()));
+                }
             }));
 
-            Element errorElement = Helpers.addAppenders(document, "RollingFile", new HashMap<String, String>() {
+            appenders.appendChild(xmlFactory.addElement(document, "RollingFile", new HashMap<String, String>() {
                 {
                     put("name", "ErrorRollingFile");
                     put("fileName", "/var/log/repose/error.log");
                     put("filePattern", "/var/log/repose/error-%d{yyyy-MM-dd_HHmmss}.log");
                 }
-            });
-            errorElement.appendChild(Helpers.addElement(document, "Filters", new HashMap<String, String>(), Optional.of(
-                    Helpers.addElement(document, "ThresholdFilter", new HashMap<String, String>() {
+            }, new ArrayList<Element>(){
+                {
+                    add(xmlFactory.addElement(document, "PatternLayout", new HashMap<String, String>() {
                         {
-                            put("level", "ERROR");
-                            put("onMatch", "ACCEPT");
+                            put("pattern", "%d %-4r [%t] %-5p %c - %m%n");
                         }
-                    }, Optional.<Element>empty())
-            )));
-
-            appenders.appendChild(errorElement);
+                    }, Optional.empty()));
+                    add(xmlFactory.addElement(document, "Policies", new HashMap<>(),
+                            new ArrayList<Element>() {
+                                {
+                                    add(xmlFactory.addElement(document, "SizeBasedTriggeringPolicy",
+                                            new HashMap<String, String>() {
+                                                {
+                                                    put("size", "200 MB");
+                                                }
+                                            }, Optional.empty()));
+                                }
+                            }
+                    ));
+                    add(xmlFactory.addElement(document, "DefaultRolloverStrategy",
+                            new HashMap<String, String>() {
+                                {
+                                    put("max", "2");
+                                }
+                            }, Optional.empty()));
+                    add(xmlFactory.addElement(document, "Filters", new HashMap<>(), Optional.of(
+                            xmlFactory.addElement(document, "ThresholdFilter", new HashMap<String, String>() {
+                                {
+                                    put("level", "ERROR");
+                                    put("onMatch", "ACCEPT");
+                                }
+                            }, Optional.<Element>empty())
+                    )));
+                }
+            }));
 
             Element loggers = document.createElement("Loggers");
             rootElement.appendChild(loggers);
 
-            Element rootRootElement = Helpers.addElement(document, "Root", new HashMap<String, String>() {
+            Element rootRootElement = xmlFactory.addElement(document, "Root", new HashMap<String, String>() {
                 {
                     put("level", "DEBUG");
                 }
-            }, Optional.of(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            }, Optional.of(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "ErrorRollingFile");
                 }
             }, Optional.<Element>empty())));
 
-            rootRootElement.appendChild(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            rootRootElement.appendChild(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "MainRollingFile");
                 }
@@ -243,86 +357,90 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
 
             loggers.appendChild(rootRootElement);
 
-            rootElement.appendChild(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            rootElement.appendChild(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "STDOUT");
                 }
             }, Optional.<Element>empty()));
 
-            rootElement.appendChild(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            rootElement.appendChild(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "MainRollingFile");
                 }
             }, Optional.<Element>empty()));
 
-            rootElement.appendChild(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            rootElement.appendChild(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "IntraFilterRollingFile");
                 }
             }, Optional.<Element>empty()));
 
-            rootElement.appendChild(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            rootElement.appendChild(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "HttpRollingFile");
                 }
             }, Optional.<Element>empty()));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "com.sun.jersey");
                     put("level", "off");
                 }
             }, Optional.<Element>empty()));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "net.sf.ehcache");
                     put("level", "error");
                 }
             }, Optional.<Element>empty()));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "org.apache");
                     put("level", "debug");
                 }
-            }, Optional.of(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            }, Optional.of(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "HttpRollingFile");
                 }
             }, Optional.<Element>empty()))));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "org.eclipse.jetty");
                     put("level", "off");
                 }
             }, Optional.<Element>empty()));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "org.springframework");
                     put("level", "debug");
                 }
             }, Optional.<Element>empty()));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "org.openrepose");
                     put("level", "debug");
                 }
             }, Optional.<Element>empty()));
 
-            loggers.appendChild(Helpers.addElement(document, "Logger", new HashMap<String, String>() {
+            loggers.appendChild(xmlFactory.addElement(document, "Logger", new HashMap<String, String>() {
                 {
                     put("name", "intrafilter-logging");
                     put("level", "trace");
                 }
-            }, Optional.of(Helpers.addElement(document, "AppenderRef", new HashMap<String, String>() {
+            }, Optional.of(xmlFactory.addElement(document, "AppenderRef", new HashMap<String, String>() {
                 {
                     put("ref", "IntraFilterRollingFile");
                 }
             }, Optional.<Element>empty()))));
+
+
+            Logger.debug("Updated logging: " + xmlFactory.convertDocumentToString(document));
+
             return xmlFactory.convertDocumentToString(document);
         } else {
             //log4j.properties
@@ -343,15 +461,76 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
         }
     }
 
+    @Override
+    public String generateSystemModelXml(Set<String> filterNames, int majorVersion, User user, String versionId) throws InternalServerException {
+        //get new doc builder
+        Document document;
+        try {
+            document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
+        } catch (ParserConfigurationException e) {
+            Logger.error("Unable to create xml document");
+            e.printStackTrace();
+            throw new InternalServerException("Unable to create xml model");
+        }
+        Element rootElement;
+        if(majorVersion >= 7)
+            rootElement = document.createElementNS("http://docs.openrepose.org/repose/system-model/v2.0",
+                    "system-model");
+        else
+            rootElement =
+                    document.createElementNS("http://docs.rackspacecloud.com/repose/system-model/v2.0",
+                            "system-model");
+        //root element
+        document.appendChild(rootElement);
+        //add repose-cluster
+        Element reposeCluster = document.createElement("repose-cluster");
+        reposeCluster.setAttribute("id", "try-it-now");
+        rootElement.appendChild(reposeCluster);
+
+        //add nodes.  Right now there's just one.  Support for multiple is next
+        Element reposeClusterNodes = document.createElement("nodes");
+        reposeCluster.appendChild(reposeClusterNodes);
+        Element reposeClusterNode = document.createElement("node");
+        reposeClusterNode.setAttribute("id", "try-it-now-1");
+        reposeClusterNode.setAttribute("hostname", "localhost");
+        reposeClusterNode.setAttribute("http-port", "8080");
+        reposeClusterNodes.appendChild(reposeClusterNode);
+
+        //add filters
+        Element filters = document.createElement("filters");
+        reposeCluster.appendChild(filters);
+        for(String filter: filterNames) {
+            Element filterElement = document.createElement("filter");
+            //split out the name.cfg.xml and put in the name
+            filterElement.setAttribute("name", filter.split(Pattern.quote("."))[0]);
+            filterElement.setAttribute("configuration", filter);
+            filters.appendChild(filterElement);
+        }
+
+        //add destination.  Right now there's just one.  Support for multiple is going to be there someday
+        Element destinations = document.createElement("destinations");
+        reposeCluster.appendChild(destinations);
+        Element endpoint = document.createElement("endpoint");
+        endpoint.setAttribute("id", "try-it-now-target");
+        endpoint.setAttribute("protocol", "http");
+        endpoint.setAttribute("hostname", "repose-origin-" + user.tenant + "-" + versionId.replace('.','-'));
+        endpoint.setAttribute("port", "8000");
+        endpoint.setAttribute("root-path", "/");
+        endpoint.setAttribute("default", "true");
+        destinations.appendChild(endpoint);
+
+        return xmlFactory.convertDocumentToString(document);
+    }
+
     private List<Configuration> unzip(File zippedFile) {
         Logger.info("unzip " + zippedFile.getName());
-        List<Configuration> filterXml = new ArrayList<Configuration>();
+        List<Configuration> filterXml = new ArrayList<>();
         try {
             InputStream inputStream = new FileInputStream(zippedFile);
             ZipInputStream zis = new ZipInputStream(inputStream);
             ZipEntry zipEntry;
             byte[] buffer = new byte[1024];
-            int read = 0;
+            int read;
             while ((zipEntry = zis.getNextEntry())!= null) {
                 Logger.debug("read " + zipEntry.getName());
                 StringBuilder s = new StringBuilder();

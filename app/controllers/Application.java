@@ -3,7 +3,10 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.inject.Inject;
 import exceptions.InternalServerException;
+import factories.ConfigurationFactory;
+import factories.XmlFactory;
 import helpers.Helpers;
 import models.Filter;
 import models.User;
@@ -28,97 +31,99 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class Application extends Controller {
+    private final XmlFactory xmlFactory;
+    private final ConfigurationFactory configurationFactory;
+
+
+    @Inject
+    public Application(XmlFactory xmlFactory, ConfigurationFactory configurationFactory){
+
+        this.xmlFactory = xmlFactory;
+        this.configurationFactory = configurationFactory;
+    }
+
 
     public F.Promise<Result> versions() {
-        F.Promise<Result> resultPromise = WS.url("https://api.github.com/repos/rackerlabs/repose/tags")
+        return WS.url("https://api.github.com/repos/rackerlabs/repose/tags")
                 .setHeader("Authorization", "token " + play.Play.application().configuration().getString("oauth.token")).get().map(
-                new Function<WSResponse, Result>(){
-                    public Result apply(WSResponse response){
-                        Logger.info(response.getAllHeaders().toString());
-                        Iterator<JsonNode> result = response.asJson().elements();
-                        ObjectMapper mapper = new ObjectMapper();
-                        List<String> tagList = new ArrayList<String>();
-                        while(result.hasNext()){
-                            tagList.add(result.next().findValue("name").textValue().replaceAll("repose-", "").replaceAll("papi-", ""));
+                        response -> {
+                            Logger.info(response.getAllHeaders().toString());
+                            Iterator<JsonNode> result = response.asJson().elements();
+                            ObjectMapper mapper = new ObjectMapper();
+                            List<String> tagList = new ArrayList<String>();
+                            while(result.hasNext()){
+                                tagList.add(result.next().findValue("name").textValue().replaceAll("repose-", "").replaceAll("papi-", ""));
+                            }
+                            JsonNode results = mapper.valueToTree(tagList);
+                            return ok(results);
                         }
-                        JsonNode results = mapper.valueToTree(tagList);
-                        return ok(results);
-                    }
-                }
-        );
-        return resultPromise;
+                );
     }
 
     public F.Promise<Result> componentsByVersion(String id) {
         Logger.info("Version id " + id.split(Pattern.quote("."))[0]);
-        F.Promise<Result> resultPromise = null;
-        if (Integer.parseInt(id.split(Pattern.quote("."))[0]) >= 7) {
+        F.Promise<Result> resultPromise;
+        if (Integer.parseInt(id.split(Pattern.quote("."))[0]) >= 7)
             resultPromise = WS.url(
-                    "https://maven.research.rackspacecloud.com/content/repositories/releases/org/openrepose/filter-bundle/" +
-                            id +
-                            "/filter-bundle-" + id + ".pom")
-                    .get().map(
-                    new Function<WSResponse, Result>() {
-                        @Override
-                        public Result apply(WSResponse wsResponse) throws Throwable {
-                            String filterListString = play.Play.application().configuration().getString("filter.list");
-                            List<String> filterList = new ArrayList<String>();
-                            if(filterListString != null)
-                                filterList = Arrays.asList(filterListString);
-                            List<String> componentList = new ArrayList<String>();
-                            ObjectMapper mapper = new ObjectMapper();
-                            Document document = wsResponse.asXml();
-                            NodeList nodeList = document.getElementsByTagName("dependency");
-                            for (int i = 0; i < nodeList.getLength(); i++) {
-                                Node node = nodeList.item(i);
-                                if (node.getNodeType() == Node.ELEMENT_NODE) {
-                                    for (int j = 0; j < node.getChildNodes().getLength(); j++) {
-                                        Node artifactId = node.getChildNodes().item(j);
-                                        if (artifactId.getNodeName() == "artifactId") {
-                                            if(filterList.isEmpty() || (!filterList.isEmpty() && filterList.contains(artifactId.getTextContent())))
-                                                componentList.add(artifactId.getTextContent());
+                "https://maven.research.rackspacecloud.com/content/repositories/releases/org/openrepose/filter-bundle/" +
+                        id +
+                        "/filter-bundle-" + id + ".pom")
+                .get().map(
+                            wsResponse -> {
+                                String filterListString = play.Play.application().configuration().getString("filter.list");
+                                List<String> filterList = new ArrayList<String>();
+                                if (filterListString != null)
+                                    filterList = Arrays.asList(filterListString);
+                                List<String> componentList = new ArrayList<String>();
+                                ObjectMapper mapper = new ObjectMapper();
+                                Document document = wsResponse.asXml();
+                                NodeList nodeList = document.getElementsByTagName("dependency");
+                                for (int i = 0; i < nodeList.getLength(); i++) {
+                                    Node node = nodeList.item(i);
+                                    if (node.getNodeType() == Node.ELEMENT_NODE) {
+                                        for (int j = 0; j < node.getChildNodes().getLength(); j++) {
+                                            Node artifactId = node.getChildNodes().item(j);
+                                            if (artifactId.getNodeName() == "artifactId") {
+                                                if (filterList.isEmpty() || (!filterList.isEmpty() && filterList.contains(artifactId.getTextContent())))
+                                                    componentList.add(artifactId.getTextContent());
+                                            }
                                         }
                                     }
                                 }
+                                return ok((JsonNode) mapper.valueToTree(componentList));
                             }
-                            return ok((JsonNode) mapper.valueToTree(componentList));
-                        }
-                    }
-            );
-        } else {
+                    );
+        else {
             resultPromise = WS.url(
                     "https://maven.research.rackspacecloud.com/content/repositories/releases/com/rackspace/papi/components/filter-bundle/" +
                             id +
                             "/filter-bundle-" + id + ".pom").get().map(
-                    new Function<WSResponse, Result>() {
-                        @Override
-                        public Result apply(WSResponse wsResponse) throws Throwable {
-                            switch(wsResponse.getStatus()){
-                                case 200:
-                                    List<String> componentList = new ArrayList<String>();
-                                    ObjectMapper mapper = new ObjectMapper();
-                                    Document document = wsResponse.asXml();
-                                    NodeList nodeList = document.getElementsByTagName("dependency");
-                                    for (int i = 0; i < nodeList.getLength(); i++) {
-                                        Node node = nodeList.item(i);
-                                        if (node.getNodeType() == Node.ELEMENT_NODE) {
-                                            // do something with the current element
-                                            for (int j = 0; j < node.getChildNodes().getLength(); j++) {
-                                                Node artifactId = node.getChildNodes().item(j);
-                                                if (artifactId.getNodeName() == "artifactId") {
-                                                    componentList.add(artifactId.getTextContent());
-                                                }
+                    wsResponse -> {
+                        switch(wsResponse.getStatus()){
+                            case 200:
+                                List<String> componentList = new ArrayList<String>();
+                                ObjectMapper mapper = new ObjectMapper();
+                                Document document = wsResponse.asXml();
+                                NodeList nodeList = document.getElementsByTagName("dependency");
+                                for (int i = 0; i < nodeList.getLength(); i++) {
+                                    Node node = nodeList.item(i);
+                                    if (node.getNodeType() == Node.ELEMENT_NODE) {
+                                        // do something with the current element
+                                        for (int j = 0; j < node.getChildNodes().getLength(); j++) {
+                                            Node artifactId = node.getChildNodes().item(j);
+                                            if (artifactId.getNodeName() == "artifactId") {
+                                                componentList.add(artifactId.getTextContent());
                                             }
                                         }
                                     }
-                                    return ok((JsonNode) mapper.valueToTree(componentList));
-                                case 404:
-                                    return notFound();
-                                default:
-                                    return notFound();
-                            }
-
+                                }
+                                return ok((JsonNode) mapper.valueToTree(componentList));
+                            case 404:
+                                return notFound();
+                            default:
+                                return notFound();
                         }
+
                     }
             );
         }
@@ -203,6 +208,7 @@ public class Application extends Controller {
         User user = User.findByToken(token);
 
         if(user != null) {
+            try {
             JsonNode jsonRequest = request().body().asJson();
             Logger.info(request().body().asJson().toString());
 
@@ -213,18 +219,19 @@ public class Application extends Controller {
 
             //create system model configuration with the specified filters (right now order doesn't matter)
             Logger.info("Create system-model xml.  Hardcode for now, expose more features later :)");
-            filters.put("system-model.cfg.xml", Helpers.generateSystemModelXml(filters.keySet(), majorVersion, user, id));
+            filters.put("system-model.cfg.xml", configurationFactory.
+                    generateSystemModelXml(filters.keySet(), majorVersion, user, id));
 
             //create containers configuration
             Logger.info("Create repose-container xml.  Hardcode for now, expose more features later :)");
-            filters.put("container.cfg.xml", Helpers.generateContainerXml(majorVersion));
+            filters.put("container.cfg.xml", configurationFactory.generateContainerXml(majorVersion));
 
             //create logging configuration
             Logger.info("If version < 7, use log4j.properties.  Else, use log4j2.xml");
             if (majorVersion >= 7)
-                filters.put("log4j2.xml", Helpers.generateLoggingXml(majorVersion));
+                filters.put("log4j2.xml", configurationFactory.generateLoggingXml(majorVersion));
             else
-                filters.put("log4j.properties", Helpers.generateLoggingXml(majorVersion));
+                filters.put("log4j.properties", configurationFactory.generateLoggingXml(majorVersion));
 
             filters.forEach((name, filter) ->
                             Logger.info("Filter: " + name + " and xml: " + filter)
@@ -238,7 +245,6 @@ public class Application extends Controller {
                     play.Play.application().configuration().getString("user.cluster.name") + " cluster");
 
             Logger.info("Create new docker instance");
-            try {
                 new models.Container().createOriginContainer(user, id);
                 String reposeId = new models.Container().createReposeContainer(user, filters, id);
                 return ok(Json.parse("{\"message\": \"success\",\"id\": \"" + reposeId + "\"}"));
@@ -263,7 +269,7 @@ public class Application extends Controller {
             if (node.isArray()) {
                 Iterator<JsonNode> jsonNodeIterator = node.elements();
                 while (jsonNodeIterator.hasNext()) {
-                    Document filterXml = null;
+                    Document filterXml;
                     JsonNode jsonNode = jsonNodeIterator.next();
                     JsonNode name = jsonNode.get("filter");
                     Filter filter = Filter.findByName(name.textValue());
@@ -305,7 +311,6 @@ public class Application extends Controller {
                                         !nameIterator.hasNext());
                             }
                         }
-                        Helpers.printDocument(filterXml);
                     }
 
                     Logger.info("get the name :" + name);
@@ -317,7 +322,7 @@ public class Application extends Controller {
         }
         Map<String, String> filterMap = new HashMap<>();
         filterXmlMap.forEach((name, doc) ->
-                        filterMap.put(name, Helpers.convertDocumentToString(doc))
+                        filterMap.put(name, xmlFactory.convertDocumentToString(doc))
         );
         return filterMap;
     }

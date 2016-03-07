@@ -2,7 +2,7 @@ package factories;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import models.Test;
+import models.TestRequest;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +17,7 @@ import static play.Logger.info;
 public class TestFactoryImpl implements TestFactory {
 
     @Override
-    public Test translateRequest(JsonNode requestBody) {
+    public TestRequest translateRequest(JsonNode requestBody) {
         ArrayNode requestHeaders = (ArrayNode) requestBody.get("headers");
 
         Map<String, String> headers = new HashMap<>();
@@ -26,7 +26,7 @@ public class TestFactoryImpl implements TestFactory {
                 headers.put(request.get("name").asText(), request.get("value").asText());
         });
 
-        return new Test(requestBody.get("method").asText(), requestBody.get("url").asText(),
+        return new TestRequest(requestBody.get("method").asText(), requestBody.get("url").asText(),
                 requestBody.get("body").asText(), headers);
     }
 

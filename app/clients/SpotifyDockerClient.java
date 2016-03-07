@@ -12,7 +12,7 @@ import factories.IContainerFactory;
 import factories.TestFactory;
 import models.Cluster;
 import models.Configuration;
-import models.Test;
+import models.TestRequest;
 import models.User;
 import org.joda.time.DateTime;
 import play.libs.Json;
@@ -222,7 +222,7 @@ public class SpotifyDockerClient implements IDockerClient {
     }
 
     @Override
-    public ObjectNode executeTestAgainstRepose(Cluster cluster, String containerId, Test test,
+    public ObjectNode executeTestAgainstRepose(Cluster cluster, String containerId, TestRequest testRequest,
                                                ObjectNode response) throws InternalServerException {
         debug("test repose instance");
         final com.spotify.docker.client.DockerClient docker;
@@ -242,7 +242,7 @@ public class SpotifyDockerClient implements IDockerClient {
             PortBinding portBinding = containerInfo.networkSettings().ports().get("8080/tcp").get(0);
             debug("container info:" + portBinding.hostIp());
 
-            ObjectNode responseNode = testClient.makeTestRequest(test, portBinding.hostIp(), portBinding.hostPort());
+            ObjectNode responseNode = testClient.makeTestRequest(testRequest, portBinding.hostIp(), portBinding.hostPort());
 
             //get the logs out
             //this will get split up into connection pool and request/response messages

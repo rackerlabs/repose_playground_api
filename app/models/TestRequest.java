@@ -5,14 +5,14 @@ import java.util.Map;
 /**
  * Created by dimi5963 on 3/6/16.
  */
-public class Test {
+public class TestRequest {
 
     private String method;
     private String uri;
     private String body;
     private Map<String, String> headers;
 
-    public Test(String method, String uri, String body, Map<String, String> headers) {
+    public TestRequest(String method, String uri, String body, Map<String, String> headers) {
         this.method = method;
         this.uri = uri;
         this.body = body;

@@ -11,7 +11,7 @@ import exceptions.InternalServerException;
 import factories.IClusterFactory;
 import factories.TestFactory;
 import models.Cluster;
-import models.Test;
+import models.TestRequest;
 import models.User;
 import play.Logger;
 
@@ -44,8 +44,8 @@ public class TestServiceImpl implements  TestService {
             if (cluster != null) {
                 ObjectNode response = JsonNodeFactory.instance.objectNode();
                 response.put("request", requestBody);
-                Test test = testFactory.translateRequest(requestBody);
-                return dockerClient.executeTestAgainstRepose(cluster, containerId, test, response);
+                TestRequest testRequest = testFactory.translateRequest(requestBody);
+                return dockerClient.executeTestAgainstRepose(cluster, containerId, testRequest, response);
             } else {
                 Logger.error("No cluster found.  Cluster creation failed and didn't throw an error.");
                 throw new InternalServerException("No cluster found.  Cluster creation failed and didn't throw an error.");

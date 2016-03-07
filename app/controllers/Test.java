@@ -9,6 +9,7 @@ import models.User;
 import play.Logger;
 import play.libs.Json;
 import play.mvc.Controller;
+import play.mvc.Http;
 import play.mvc.Result;
 import services.IUserService;
 import services.TestService;
@@ -39,12 +40,14 @@ public class Test extends Controller {
      * 7. return all the jsons
      *
      * @param id container id
-     * @return
+     * @return Result test result
      */
-    @Deprecated
     public Result test(String id){
         Logger.debug("In test controller.  Get test form: " + id);
-        JsonNode requestBody = request().body().asJson();
+        Http.RequestBody request = request().body();
+        if(request == null)
+            return badRequest("Not a proper request.");
+        JsonNode requestBody = request.asJson();
         String token = request().getHeader("Token");
         Logger.debug("Check the user for " + token);
         //check if expired
@@ -58,6 +61,8 @@ public class Test extends Controller {
                 Logger.debug("User is authorized: " + user.toString() + " for " + token);
                 try {
                     ObjectNode result = testService.testReposeInstance(user, id, requestBody);
+                    if(result == null)
+                        return ok();
                     return ok(Json.toJson(result));
                 } catch (InternalServerException ise) {
                     ObjectNode response = JsonNodeFactory.instance.objectNode();

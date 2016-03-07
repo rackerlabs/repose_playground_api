@@ -29,5 +29,5 @@ public interface IDockerClient {
                                 List<Configuration> configurationList) throws InternalServerException;
 
     ObjectNode executeTestAgainstRepose(Cluster cluster, String containerId,
-                                        Test test, ObjectNode response) throws InternalServerException;
+                                        TestRequest testRequest, ObjectNode response) throws InternalServerException;
 }

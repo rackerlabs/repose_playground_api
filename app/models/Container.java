@@ -315,9 +315,4 @@ public class Container {
             throw new InternalServerException(e.getMessage());
         }
     }
-
-    @Deprecated
-    public void createThirdPartyContainer(User user, String version) {
-
-    }
 }

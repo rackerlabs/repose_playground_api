@@ -23,6 +23,7 @@ import play.libs.ws.WS;
 import play.libs.ws.WSResponse;
 import play.mvc.Controller;
 import play.mvc.Result;
+import services.ReposeService;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -33,13 +34,16 @@ import java.util.regex.Pattern;
 public class Application extends Controller {
     private final XmlFactory xmlFactory;
     private final ConfigurationFactory configurationFactory;
+    private final ReposeService reposeService;
 
 
     @Inject
-    public Application(XmlFactory xmlFactory, ConfigurationFactory configurationFactory){
+    public Application(XmlFactory xmlFactory, ConfigurationFactory configurationFactory,
+                       ReposeService reposeService){
 
         this.xmlFactory = xmlFactory;
         this.configurationFactory = configurationFactory;
+        this.reposeService = reposeService;
     }
 
 
@@ -245,6 +249,7 @@ public class Application extends Controller {
                     play.Play.application().configuration().getString("user.cluster.name") + " cluster");
 
             Logger.info("Create new docker instance");
+
                 new models.Container().createOriginContainer(user, id);
                 String reposeId = new models.Container().createReposeContainer(user, filters, id);
                 return ok(Json.parse("{\"message\": \"success\",\"id\": \"" + reposeId + "\"}"));

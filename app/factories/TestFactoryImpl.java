@@ -3,13 +3,14 @@ package factories;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import models.TestRequest;
+import play.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static play.Logger.info;
+import static play.Logger.debug;
 
 /**
  * Created by dimi5963 on 3/6/16.
@@ -18,32 +19,46 @@ public class TestFactoryImpl implements TestFactory {
 
     @Override
     public TestRequest translateRequest(JsonNode requestBody) {
-        ArrayNode requestHeaders = (ArrayNode) requestBody.get("headers");
+        debug("Translate request " + requestBody);
+
+        if(requestBody == null)
+            return null;
 
         Map<String, String> headers = new HashMap<>();
-        requestHeaders.forEach(request -> {
-            if (!request.get("name").asText().isEmpty())
-                headers.put(request.get("name").asText(), request.get("value").asText());
-        });
 
-        return new TestRequest(requestBody.get("method").asText(), requestBody.get("url").asText(),
-                requestBody.get("body").asText(), headers);
+        if(requestBody.get("headers") != null) {
+            ArrayNode requestHeaders = (ArrayNode) requestBody.get("headers");
+
+            requestHeaders.forEach(request -> {
+                if (!request.get("name").asText().isEmpty())
+                    headers.put(request.get("name").asText(), request.get("value").asText());
+            });
+        }
+
+        String method = requestBody.get("method") != null ? requestBody.get("method").asText() : "GET";
+        String url = requestBody.get("url") != null ? requestBody.get("url").asText() : "/";
+        String body = requestBody.get("body") != null ? requestBody.get("body").asText() : "";
+
+        return new TestRequest(method, url, body, headers);
     }
 
     @Override
     public Map<String, ?> generateDebugMessageMap(List<String> httpDebugLogList) {
-
         Map<String, ?> debugMessageMap = new HashMap<String, List<?>>() {
             {
                 put("poolMessages", new ArrayList<String>());
                 put("externalRequests", new ArrayList<Map<String, List<String>>>());
             }
         };
+
+        if(httpDebugLogList == null)
+            return debugMessageMap;
+
         boolean requestMessageStarted = false;
         boolean responseMessageStarted = false;
         for (String entry : httpDebugLogList) {
             //check if connection pool entry
-            info("Entry: " + entry);
+            debug("Entry: " + entry);
             if (entry.contains("org.apache.http.impl.conn.PoolingClientConnectionManager")) {
                 ((List<String>) debugMessageMap.get("poolMessages")).add(entry);
             }
@@ -79,11 +94,6 @@ public class TestFactoryImpl implements TestFactory {
                     requestResponseLogs.get("request").add(
                             entry.substring(entry.indexOf("org.apache.http.wire -  >>") +
                                     "org.apache.http.wire -  ".length()));
-
-                    //Logger.info("request logs entry: " + requestLogs.size() + " and last entry: " + requestLogs.get(requestLogs.size() - 1));
-                    //String request = requestLogs.get(requestLogs.size() -1).concat("\n").concat(entry);
-                    //requestLogs.set(requestLogs.size() - 1, request);
-                    //((Map<String, List<String>>) debugMessageMap.get("externalRequests")).put("request", requestLogs);
                 }
             }
             //check for response
@@ -96,18 +106,22 @@ public class TestFactoryImpl implements TestFactory {
                     }
                     int externalRequestsSize =
                             ((List<Map<String, List<String>>>) debugMessageMap.get("externalRequests")).size();
-                    Map<String, List<String>> requestResponseLogs =
-                            ((List<Map<String, List<String>>>) debugMessageMap.get("externalRequests")).
-                                    get(externalRequestsSize - 1);
-                    requestResponseLogs.put("response", new ArrayList<String>() {
-                        {
-                            add(entry.substring(
-                                    entry.indexOf("org.apache.http.wire -  <<") +
-                                            "org.apache.http.wire -  ".length()));
-                        }
-                    });
+                    if(externalRequestsSize > 0) {
+                        Map<String, List<String>> requestResponseLogs =
+                                ((List<Map<String, List<String>>>) debugMessageMap.get("externalRequests")).
+                                        get(externalRequestsSize - 1);
+                        requestResponseLogs.put("response", new ArrayList<String>() {
+                            {
+                                add(entry.substring(
+                                        entry.indexOf("org.apache.http.wire -  <<") +
+                                                "org.apache.http.wire -  ".length()));
+                            }
+                        });
 
-                    responseMessageStarted = true;
+                        responseMessageStarted = true;
+                    } else {
+                        Logger.warn("We haven't received a request yet!  Something is wrong.  Let's ignore it for now");
+                    }
                 } else {
                     //append
                     int externalRequestsSize =

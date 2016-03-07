@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.Inject;
-import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.DockerException;
 import exceptions.InternalServerException;
 import factories.IClusterFactory;
 import factories.TestFactory;
@@ -37,13 +35,16 @@ public class TestServiceImpl implements  TestService {
     public ObjectNode testReposeInstance(User user, String containerId, JsonNode requestBody) throws InternalServerException {
         Logger.debug("test repose instance " + containerId);
 
+        if(requestBody == null)
+            throw new InternalServerException("Request is malformed.");
+
         boolean createClusterIfDNE = true;
         String clusterName = clusterFactory.getClusterName();
         if (clusterName != null) {
             Cluster cluster = clusterService.getClusterByName(clusterName, user, createClusterIfDNE);
             if (cluster != null) {
                 ObjectNode response = JsonNodeFactory.instance.objectNode();
-                response.put("request", requestBody);
+                response.putPOJO("request", requestBody);
                 TestRequest testRequest = testFactory.translateRequest(requestBody);
                 return dockerClient.executeTestAgainstRepose(cluster, containerId, testRequest, response);
             } else {
@@ -54,12 +55,5 @@ public class TestServiceImpl implements  TestService {
             Logger.error("What cluster am I supposed to create?  Misconfigured.");
             throw new InternalServerException("What cluster am I supposed to create?  Misconfigured.");
         }
-    }
-
-    private String executeCommand(String containerId, DockerClient docker, String[] command) throws DockerException, InterruptedException {
-        return docker.execCreate(
-                containerId, command,
-                DockerClient.ExecCreateParam.attachStdout(),
-                DockerClient.ExecCreateParam.attachStderr());
     }
 }

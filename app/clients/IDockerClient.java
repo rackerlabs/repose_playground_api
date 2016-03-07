@@ -1,12 +1,9 @@
 package clients;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.ImplementedBy;
 import exceptions.InternalServerException;
-import models.Cluster;
-import models.Configuration;
-import models.Container;
-import models.ContainerStats;
-import models.User;
+import models.*;
 
 import java.util.List;
 
@@ -30,4 +27,7 @@ public interface IDockerClient {
 
     String createReposeInstance(Cluster cluster, User user, String versionId,
                                 List<Configuration> configurationList) throws InternalServerException;
+
+    ObjectNode executeTestAgainstRepose(Cluster cluster, String containerId,
+                                        Test test, ObjectNode response) throws InternalServerException;
 }

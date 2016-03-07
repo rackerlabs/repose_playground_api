@@ -1,6 +1,7 @@
 package factories;
 
 import models.User;
+import play.Logger;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -37,5 +38,57 @@ public class CarinaFactory implements ICarinaFactory {
     @Override
     public Path getCarinaDirectoryWithCluster(String tenant, String cluster) {
         return getCarinaDirectory(tenant).resolve(cluster);
+    }
+
+    @Override
+    public Path getCarinaOriginFile(String file) {
+        return play.Play.application().path().toPath().resolve("carina").
+                resolve("origin-image").resolve(file);
+    }
+
+    @Override
+    public Path getOriginImageFile(String tenant, String file) throws IOException {
+        return getOriginImageDirectory(tenant).resolve(file);
+    }
+
+    @Override
+    public Path getOriginImageDirectory(String tenant) throws IOException {
+        try {
+            return Files.createDirectories(getCarinaDirectory(tenant).resolve("origin_image"));
+        } catch (IOException e) {
+            Logger.error("Unable to create origin image directory " + e.getLocalizedMessage());
+            throw e;
+        }
+    }
+
+    @Override
+    public Path getReposeConfigDirectory(String tenant) throws IOException {
+        try {
+            return Files.createDirectories(getReposeImageDirectory(tenant).resolve("repose_config"));
+        } catch (IOException e) {
+            Logger.error("Unable to create repose config directory " + e.getLocalizedMessage());
+            throw e;
+        }
+    }
+
+    @Override
+    public Path getReposeImageDirectory(String tenant) throws IOException {
+        try {
+            return Files.createDirectories(getCarinaDirectory(tenant).resolve("repose_image"));
+        } catch (IOException e) {
+            Logger.error("Unable to create repose image directory " + e.getLocalizedMessage());
+            throw e;
+        }
+    }
+
+    @Override
+    public Path getCarinaReposeFile(String file){
+        return play.Play.application().path().toPath().resolve("carina").
+                resolve("repose-image").resolve(file);
+    }
+
+    @Override
+    public Path getReposeImageFile(String tenant, String file) throws IOException {
+        return getReposeImageDirectory(tenant).resolve(file);
     }
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.inject.Inject;
 import exceptions.InternalServerException;
+import models.Container;
 import models.ContainerStats;
 import models.User;
 import play.Logger;
@@ -12,6 +13,9 @@ import play.mvc.Controller;
 import play.mvc.Result;
 import services.IReposeService;
 import services.IUserService;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Repose extends Controller {
 
@@ -34,7 +38,7 @@ public class Repose extends Controller {
      *           3. Download cluster zip and put it into /tmp/{tenant}/ directory
      *           4. Parse docker.env and get the DOCKER_HOST location
      *           5. Use docker client to retrieve all running repose containers
-     * @return
+     * @return Result list of container models
      */
     public Result list() {
         Logger.debug("Get repose list");
@@ -51,7 +55,11 @@ public class Repose extends Controller {
             if(user != null) {
                 Logger.debug("User is authorized: " + user.toString() + " for " + token);
                 try{
-                    return ok(Json.toJson(reposeService.getReposeList(user)));
+                    List<Container> containerList = reposeService.getReposeList(user);
+                    if(containerList != null)
+                        return ok(Json.toJson(containerList));
+                    else
+                        return ok(Json.toJson(new ArrayList<Container>()));
                 } catch(InternalServerException ise) {
                     ObjectNode response = JsonNodeFactory.instance.objectNode();
                     response.put("message", ise.getLocalizedMessage());
@@ -108,7 +116,7 @@ public class Repose extends Controller {
     /***
      * Repose start will start the running instance of repose and all of its linked containers
      * @param id id of the container
-     * @return
+     * @return Result repose container id
      */
     public Result start(String id) {
         Logger.debug("Start repose instance");
@@ -149,7 +157,7 @@ public class Repose extends Controller {
     /***
      * Repose stats will return running instance's stats
      * @param id
-     * @return
+     * @return Result stats array
      */
     public Result stats(String id) {
         Logger.debug("Return repose instance stats");

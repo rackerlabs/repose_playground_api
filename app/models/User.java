@@ -67,26 +67,12 @@ public class User extends Model {
     public static final Finder<Long, User> find = new Finder<Long, User>(
             Long.class, User.class);
 
-    public static User findByNameCurrent(String username) {
-        return find
-                .where()
-                .eq("username", username.toLowerCase())
-                .gt("expireDate", DateTime.now())
-                .findUnique();
-    }
-
     @Deprecated
     public static User findByToken(String token) {
         return find
                 .where()
                 .eq("token", token)
                 .findUnique();
-    }
-
-    @Deprecated
-    public static boolean isValid(String token){
-        User user = findByToken(token);
-        return user != null && user.expireDate.isAfterNow();
     }
 
     private static byte[] getSha512(String value) {

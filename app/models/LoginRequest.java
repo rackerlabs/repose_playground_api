@@ -13,8 +13,4 @@ public class LoginRequest {
     public AuthRequest getAuth() {
         return auth;
     }
-
-    public void setAuth(AuthRequest auth) {
-        this.auth = auth;
-    }
 }

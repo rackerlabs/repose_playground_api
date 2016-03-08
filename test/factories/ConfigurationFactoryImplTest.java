@@ -53,7 +53,7 @@ public class ConfigurationFactoryImplTest {
 
         List<Configuration> configurationList =
                 new ConfigurationFactoryImpl(new XmlFactoryImpl()).
-                        translateConfigurations(user, "1", multipartFormData);
+                        translateConfigurationsFromUpload(user, "1", multipartFormData);
 
         //includes mac osx zipped files.
         assertEquals(14, configurationList.size());
@@ -88,7 +88,7 @@ public class ConfigurationFactoryImplTest {
 
         List<Configuration> configurationList =
                 new ConfigurationFactoryImpl(new XmlFactoryImpl()).
-                        translateConfigurations(user, "7", multipartFormData);
+                        translateConfigurationsFromUpload(user, "7", multipartFormData);
 
         //includes mac osx zipped files.
         assertEquals(14, configurationList.size());
@@ -124,7 +124,7 @@ public class ConfigurationFactoryImplTest {
         exception.expect(InternalServerException.class);
         exception.expectMessage("Invalid version specified.");
         new ConfigurationFactoryImpl(new XmlFactoryImpl()).
-                translateConfigurations(user, "xxx", multipartFormData);
+                translateConfigurationsFromUpload(user, "xxx", multipartFormData);
 
     }
 
@@ -152,6 +152,6 @@ public class ConfigurationFactoryImplTest {
         exception.expect(NotFoundException.class);
         exception.expectMessage("No zip files");
         new ConfigurationFactoryImpl(new XmlFactoryImpl()).
-                translateConfigurations(user, "7", multipartFormData);
+                translateConfigurationsFromUpload(user, "7", multipartFormData);
     }
 }

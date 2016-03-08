@@ -64,25 +64,38 @@ public class User extends Model {
         this.tenant = tenant;
     }
 
-    public static final Finder<Long, User> find = new Finder<Long, User>(
+    public static final Finder<Long, User> find = new Finder<>(
             Long.class, User.class);
 
-    @Deprecated
-    public static User findByToken(String token) {
-        return find
-                .where()
-                .eq("token", token)
-                .findUnique();
+    public Long getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public String getTenant() {
+        return tenant;
+    }
+
+    public DateTime getExpireDate() {
+        return expireDate;
+    }
+
+    public String getUserid() {
+        return userid;
     }
 
     private static byte[] getSha512(String value) {
         try {
             return MessageDigest.getInstance("SHA-512").digest(value.getBytes("UTF-8"));
         }
-        catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-        catch (UnsupportedEncodingException e) {
+        catch (NoSuchAlgorithmException | UnsupportedEncodingException e) {
             throw new RuntimeException(e);
         }
     }

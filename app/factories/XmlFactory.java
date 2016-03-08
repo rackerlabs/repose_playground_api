@@ -20,4 +20,7 @@ public interface XmlFactory {
 
     Element addElement(Document doc, String name, Map<String, String> attributeList,
                        List<Element> nestedElementList);
+
+    Element insertElement(Element parentElement, Document document,
+                          String elementName, String elementValue, String valueType, boolean isLast);
 }

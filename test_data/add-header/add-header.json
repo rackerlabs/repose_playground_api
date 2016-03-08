@@ -1,0 +1,106 @@
+{
+  "name": "add-headers",
+  "doc": "The root configuration for the Repose IP Classification filter configuration file.",
+  "assert": [
+    {
+      "formula": "count(*)>=1", //at least one item to be defined
+      "message": "At least one header must be defined."
+    }
+  ],
+  "items": [
+    {
+      "name": "request",
+      "required": "optional",
+      "minOccurs": 0,
+      "type": "entry",
+      "items": [
+        {
+          "doc": "Add Header can be used to add a new header with specific value to a request chain. Optionally you can remove the old header, which is left in by default. Values are limited to 4096 characters.",
+          "minOccurs": 1,
+          "maxOccurs": "unbounded",
+          "required": "required",
+          "name": "header",
+          "type": "list",
+          "items": [
+            {
+              "name": "value",
+              "xsd-type": "text",
+              "doc": "\n                    This limits header value to 4096 characters.\n                ",
+              "type": "string",
+              "maxLength": "4096"
+            },
+            {
+              "xsd-type": "attribute",
+              "name": "name",
+              "type": "string",
+              "required": "required"
+            },
+            {
+              "xsd-type": "attribute",
+              "default": "false",
+              "name": "overwrite",
+              "type": "boolean",
+              "required": "optional"
+            },
+            {
+              "xsd-type": "attribute",
+              "name": "quality",
+              "type": "double",
+              "minInclusive": "0.0",
+              "maxInclusive": "1.0",
+              "required": "optional",
+              "doc": "\n                                Quality assigned to users found in the request headers.\n                                If no quality is set, Repose will default this value to 0.1\n                            \n                                Quality factors are defined in the\n                                HTTP RFC -\n                                    Section-3.9\n                                \n                                (for usage examples, seeHTTP RFC - Section\n                                14.1)\n                                as a mechanism for weighting values in multi-value headers.\n                                Possible values for quality are 0 to 1.0.\n                            "
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "response",
+      "required": "optional",
+      "minOccurs": 0,
+      "type": "entry",
+      "items": [
+        {
+          "doc": "Add Header can be used to add a new header with specific value to a request chain. Optionally you can remove the old header, which is left in by default. Values are limited to 4096 characters.",
+          "minOccurs": 1,
+          "maxOccurs": "unbounded",
+          "required": "required",
+          "name": "header",
+          "type": "list",
+          "items": [
+            {
+              "name": "value",
+              "xsd-type": "text",
+              "doc": "\n                    This limits header value to 4096 characters.\n                ",
+              "type": "string",
+              "maxLength": "4096"
+            },
+            {
+              "xsd-type": "attribute",
+              "name": "name",
+              "type": "string",
+              "required": "required"
+            },
+            {
+              "xsd-type": "attribute",
+              "default": "false",
+              "name": "overwrite",
+              "type": "boolean",
+              "required": "optional"
+            },
+            {
+              "xsd-type": "attribute",
+              "name": "quality",
+              "type": "double",
+              "minInclusive": "0.0",
+              "maxInclusive": "1.0",
+              "required": "optional",
+              "doc": "\n                                Quality assigned to users found in the request headers.\n                                If no quality is set, Repose will default this value to 0.1\n                            \n                                Quality factors are defined in the\n                                HTTP RFC -\n                                    Section-3.9\n                                \n                                (for usage examples, seeHTTP RFC - Section\n                                14.1)\n                                as a mechanism for weighting values in multi-value headers.\n                                Possible values for quality are 0 to 1.0.\n                            "
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

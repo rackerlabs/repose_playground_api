@@ -13,8 +13,4 @@ public class AuthRequest {
     public PasswordCredsRequest getPasswordCredentials() {
         return passwordCredentials;
     }
-
-    public void setPasswordCredentials(PasswordCredsRequest passwordCredentials) {
-        this.passwordCredentials = passwordCredentials;
-    }
 }

@@ -26,7 +26,8 @@ public interface IDockerClient {
     String createOriginInstance(Cluster cluster, User user, String versionId) throws InternalServerException;
 
     String createReposeInstance(Cluster cluster, User user, String versionId,
-                                List<Configuration> configurationList) throws InternalServerException;
+                                List<Configuration> configurationList)
+            throws InternalServerException;
 
     ObjectNode executeTestAgainstRepose(Cluster cluster, String containerId,
                                         TestRequest testRequest, ObjectNode response) throws InternalServerException;

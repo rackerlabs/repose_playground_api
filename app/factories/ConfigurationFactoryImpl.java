@@ -1,9 +1,11 @@
 package factories;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.Inject;
 import exceptions.InternalServerException;
 import exceptions.NotFoundException;
 import models.Configuration;
+import models.Filter;
 import models.User;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -46,8 +48,8 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
     }
 
     @Override
-    public List<Configuration> translateConfigurations(User user, String reposeVersion,
-                                                       Http.MultipartFormData body)
+    public List<Configuration> translateConfigurationsFromUpload(User user, String reposeVersion,
+                                                                 Http.MultipartFormData body)
             throws NotFoundException, InternalServerException {
         Logger.debug("Translate configurations for " + user + ", version " + reposeVersion);
         try{
@@ -87,6 +89,78 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
         }
 
         throw new exceptions.NotFoundException("No zip files");
+    }
+
+    @Override
+    //TODO: generate system model here
+    public List<Configuration> translateConfigurationsFromJson(User user, String reposeVersion, JsonNode node)
+            throws NotFoundException, InternalServerException {
+        Map<String, Document> filterXmlMap = new HashMap<>();
+
+        //create new instance of doc factory
+        DocumentBuilderFactory icFactory = DocumentBuilderFactory.newInstance();
+        //get new doc builder
+        DocumentBuilder icBuilder;
+        try {
+            if (node.isArray()) {
+                Iterator<JsonNode> jsonNodeIterator = node.elements();
+                while (jsonNodeIterator.hasNext()) {
+                    Document filterXml;
+                    JsonNode jsonNode = jsonNodeIterator.next();
+                    JsonNode name = jsonNode.get("filter");
+                    Filter filter = Filter.findByName(name.textValue());
+                    if (filter != null) {
+                        //does filter already set in the map
+                        filterXml = filterXmlMap.get(filter.name + ".cfg.xml");
+                        if (filterXml == null) {
+                            icBuilder = icFactory.newDocumentBuilder();
+                            filterXml = icBuilder.newDocument();
+                            filterXmlMap.put(filter.name + ".cfg.xml", filterXml);
+                        }
+                        //iterate through each token of the name and create an xml tree if one does not exist.
+                        Logger.info(jsonNode.get("name").asText());
+                        String[] nameTokens = jsonNode.get("name").asText().split(Pattern.quote("."));
+                        Iterator<String> nameIterator = Arrays.asList(nameTokens).iterator();
+                        Element currentElement = filterXml.getDocumentElement();
+                        while(nameIterator.hasNext()){
+                            String nameToken = nameIterator.next();
+                            if(currentElement == filterXml.getDocumentElement()) {
+                                //this is the root element
+                                if(filterXml.getDocumentElement() == null) {
+                                    //this document is empty!  add a new one
+                                    Element rootElement = filterXml.createElementNS(filter.namespace, nameToken);
+                                    filterXml.appendChild(rootElement);
+                                    currentElement = rootElement;
+                                } else if(!currentElement.getNodeName().equals(nameToken)){
+                                    //not root nameToken.  gotta add
+                                    currentElement = xmlFactory.insertElement(currentElement,
+                                            filterXml, nameToken,
+                                            jsonNode.get("value").asText(),
+                                            jsonNode.get("type").asText(),
+                                            !nameIterator.hasNext());
+                                }
+                            } else {
+                                currentElement = xmlFactory.insertElement(currentElement,
+                                        filterXml, nameToken,
+                                        jsonNode.get("value").asText(),
+                                        jsonNode.get("type").asText(),
+                                        !nameIterator.hasNext());
+                            }
+                        }
+                    }
+
+                    Logger.info("get the name :" + name);
+
+                }
+            }
+        } catch(ParserConfigurationException pce){
+            pce.printStackTrace();
+        }
+        Map<String, String> filterMap = new HashMap<>();
+        filterXmlMap.forEach((name, doc) ->
+                        filterMap.put(name, xmlFactory.convertDocumentToString(doc))
+        );
+        return null;
     }
 
     @Override

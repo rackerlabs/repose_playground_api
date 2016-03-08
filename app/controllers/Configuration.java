@@ -112,7 +112,7 @@ public class Configuration extends Controller {
                     //to generate identity is provided, if origin docker file or url is provided
                     //by default take the generated origin type
                     List<models.Configuration> configurationList =
-                            configurationFactory.translateConfigurations(user, id, configurations);
+                            configurationFactory.translateConfigurationsFromUpload(user, id, configurations);
 
                     String reposeId = reposeService.setUpReposeEnvironment(ReposeEnvironmentType.GENERATED_ORIGIN,
                             user, id, configurationList);

@@ -2,6 +2,7 @@ package factories;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import play.Logger;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -13,6 +14,8 @@ import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by dimi5963 on 3/5/16.
@@ -65,4 +68,82 @@ public class XmlFactoryImpl implements XmlFactory {
         return element;
 
     }
+
+    @Override
+    public Element insertElement(Element parentElement, Document document,
+                                 String elementName, String elementValue, String valueType, boolean isLast){
+        Logger.trace("In insertElement for " + parentElement +
+                " with " + elementName + " and " + elementValue + " (type " + valueType + ")");
+        Element currentElement = null;
+
+        if(isLast){
+            String patternString = "(.*)\\[(\\d+)\\]$";
+            Logger.trace("Check if parent is a list of grandparent " + patternString);
+            Matcher matcher = Pattern.compile(patternString).matcher(elementName);
+            if(matcher.find()){
+                //get the real parent.
+                Element realParentElement =
+                        getRealParentElement(parentElement, Integer.parseInt(matcher.group(2)), document);
+
+                switch(valueType){
+                    case "text":
+                        realParentElement.setTextContent(elementValue);
+                        break;
+                    case "attribute":
+                        realParentElement.setAttribute(matcher.group(1), elementValue);
+                        break;
+                    default:
+                        Logger.error(valueType + " is not defined.");
+                }
+            } else {
+                //not a list
+                switch(valueType){
+                    case "text":
+                        parentElement.setTextContent(elementValue);
+                        break;
+                    case "attribute":
+                        parentElement.setAttribute(elementName, elementValue);
+                        break;
+                    default:
+                        Logger.error(valueType + " is not defined.");
+                }
+            }
+        } else {
+            Logger.trace("Check if parent has childnodes that equal to " + elementName);
+            for(int child = 0; child < parentElement.getChildNodes().getLength(); child ++) {
+                if(parentElement.getChildNodes().item(child).getNodeName().equals(elementName)){
+                    //element found
+                    return (Element)parentElement.getChildNodes().item(child);
+                }
+            }
+            //not found
+            //check if it's a list first
+            if(elementName.contains("[") && elementName.contains("]")){
+                Logger.trace("element is a list");
+                elementName = elementName.split(Pattern.quote("["))[0];
+            } else {
+                Logger.trace("not yet added.");
+                currentElement = document.createElement(elementName);
+                parentElement.appendChild(currentElement);
+            }
+        }
+
+
+        return currentElement;
+    }
+
+
+    private Element getRealParentElement(Element currentElement, int order, Document document){
+        if(currentElement.getParentNode().getChildNodes().getLength() >= order){
+            //we haven't created this node yet. Let's do it.
+            for(int child = 0;
+                child <= order - (currentElement.getParentNode().getChildNodes().getLength());
+                child ++ ){
+                Element newElement = document.createElement(currentElement.getNodeName());
+                currentElement.getParentNode().appendChild(newElement);
+            }
+        }
+        return (Element)currentElement.getParentNode().getChildNodes().item(order);
+    }
+
 }

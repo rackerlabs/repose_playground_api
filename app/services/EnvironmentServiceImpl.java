@@ -23,7 +23,8 @@ public class EnvironmentServiceImpl implements EnvironmentService{
 
     @Override
     public String generatedOriginEnvironment(Cluster cluster, String versionId, User user,
-                                             List<Configuration> configurationList) throws InternalServerException {
+                                             List<Configuration> configurationList)
+            throws InternalServerException {
         String originId = applicationService.createOriginInstance(cluster, user, versionId);
         if (originId != null)
             return applicationService.createReposeInstance(cluster, user, configurationList, versionId);

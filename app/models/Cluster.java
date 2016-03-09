@@ -38,15 +38,6 @@ public class Cluster extends Model {
     public static final Finder<Long, Cluster> find = new Finder<Long, Cluster>(
             Long.class, Cluster.class);
 
-    @Deprecated
-    public static Cluster findByUserandName(Long userId, String name) {
-        return find
-                .where()
-                .eq("user", userId)
-                .eq("name", name)
-                .findUnique();
-    }
-
     public String toString(){
         StringBuilder carinaBuilder = new StringBuilder();
         carinaBuilder.append("Cluster: ");

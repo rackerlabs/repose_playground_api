@@ -39,6 +39,6 @@ public class DockerApplicationService implements ApplicationService {
     @Override
     public String createThirdPartyInstance(Cluster cluster, User user,
                                            String containerId) throws InternalServerException {
-        return null;
+        throw new InternalServerException("Not implemented");
     }
 }

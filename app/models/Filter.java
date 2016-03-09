@@ -1,7 +1,6 @@
 package models;
 
 import com.avaje.ebean.Model;
-import org.joda.time.DateTime;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -27,6 +26,18 @@ public class Filter extends Model {
 
     public void setNamespace(String namespace) {
         this.namespace = namespace;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getNamespace() {
+        return namespace;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public void setName(String name) {

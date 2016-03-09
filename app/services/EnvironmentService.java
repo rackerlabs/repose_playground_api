@@ -15,7 +15,8 @@ import java.util.List;
 public interface EnvironmentService {
 
     String generatedOriginEnvironment(Cluster cluster, String versionId, User user,
-                                      List<Configuration> configurationList) throws InternalServerException;
+                                      List<Configuration> configurationList)
+            throws InternalServerException;
 
 
 }

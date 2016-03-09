@@ -203,4 +203,30 @@ public class DockerApplicationServiceTest {
             fail(e.getLocalizedMessage());
         }
     }
+
+    @Test
+    public void testCreateThirdPartyInstance() throws InternalServerException {
+
+        //set up mock user
+        User user = new User();
+        user.setTenant("111");
+        user.setPassword("pass");
+        user.setToken("fake-token");
+        user.setUserid("1");
+        user.setUsername("fake-user");
+        user.setExpireDate(DateTime.now().plus(1000));
+
+        //mock cluster
+        Cluster cluster = new Cluster();
+        cluster.setCert_directory("/tmp/test");
+        cluster.setName("fake-name");
+        cluster.setUri("fake-uri");
+
+        IDockerClient dockerClient = mock(IDockerClient.class);
+        exception.expect(InternalServerException.class);
+        exception.expectMessage("Not implemented");
+        new DockerApplicationService(dockerClient).
+                createThirdPartyInstance(cluster, user, "1");
+
+    }
 }

@@ -1,0 +1,83 @@
+{
+  "name": "ip-user",
+  "doc": "The root configuration for the Repose IP Classification filter configuration file.",
+  "items": [
+    {
+      "name": "user-header",
+      "required": "optional",
+      "maxOccurs": 1,
+      "minOccurs": 0,
+      "type": "entry",
+      "items": [
+        {
+          "xsd-type": "attribute",
+          "name": "x-pp-user",
+          "type": "string",
+          "required": "optional",
+          "doc": "The header name to be used."
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "quality",
+          "type": "double",
+          "minInclusive": 0.0,
+          "maxInclusive": 1.0,
+          "required": "optional",
+          "doc": "The quality associated with this header value.",
+          "default": 0.4
+        }
+      ]
+    },
+    {
+      "name": "group-header",
+      "required": "optional",
+      "maxOccurs": 1,
+      "minOccurs": 0,
+      "type": "entry",
+      "items": [
+        {
+          "xsd-type": "attribute",
+          "name": "x-pp-groups",
+          "type": "string",
+          "required": "optional",
+          "doc": "The header name to be used."
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "quality",
+          "type": "double",
+          "minInclusive": 0.0,
+          "maxInclusive": 1.0,
+          "required": "optional",
+          "doc": "The quality associated with this header value.",
+          "default": 0.4
+        }
+      ]
+    },
+    {
+      "name": "group",
+      "required": "required",
+      "maxOccurs": "unbounded",
+      "type": "list",
+      "minOccurs": 1,
+      "doc": "A list of Classless Inter-Domain Routing (CIDR) addresses.",
+      "items": [
+        {
+          "xsd-type": "attribute",
+          "name": "name",
+          "type": "string",
+          "required": "required",
+          "doc": "The name to be placed in the named group header."
+        },
+        {
+          "name": "cidr-ip",
+          "xsd-type": "text",
+          "type": "string",
+          "minOccurs": 1,
+          "maxOccurs": "unbounded",
+          "doc": "The Classless Inter-Domain Routing (CIDR) expression to match against.                            See: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing"
+        }
+      ]
+    }
+  ]
+}

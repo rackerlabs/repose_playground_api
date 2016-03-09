@@ -393,7 +393,7 @@ public class ConfigurationTest extends WithApplication {
             try {
                 when(reposeServiceMock.setUpReposeEnvironment(any(), any(), anyString(), anyList())).
                         thenReturn(reposeId);
-                when(configurationFactoryMock.translateConfigurations(any(), anyString(), any())).
+                when(configurationFactoryMock.translateConfigurationsFromUpload(any(), anyString(), any())).
                         thenReturn(configurationList);
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
@@ -445,7 +445,7 @@ public class ConfigurationTest extends WithApplication {
             verify(request, times(1)).getHeader(anyString());
             try {
                 verify(reposeServiceMock).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
             }
@@ -499,7 +499,7 @@ public class ConfigurationTest extends WithApplication {
 
             try {
                 verify(reposeServiceMock, never()).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock, never()).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock, never()).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
             }
@@ -553,7 +553,7 @@ public class ConfigurationTest extends WithApplication {
 
             try {
                 verify(reposeServiceMock, never()).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock, never()).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock, never()).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
             }
@@ -611,7 +611,7 @@ public class ConfigurationTest extends WithApplication {
 
             try {
                 verify(reposeServiceMock, never()).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock, never()).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock, never()).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
             }
@@ -638,7 +638,7 @@ public class ConfigurationTest extends WithApplication {
             when(userServiceMock.isValid(anyString())).thenReturn(true);
             when(userServiceMock.findByToken(anyString())).thenReturn(user);
             try {
-                when(configurationFactoryMock.translateConfigurations(any(), anyString(), any())).
+                when(configurationFactoryMock.translateConfigurationsFromUpload(any(), anyString(), any())).
                         thenThrow(new NotFoundException("Configurations Not found"));
             }catch(NotFoundException | InternalServerException ise){
                 fail(ise.getLocalizedMessage());
@@ -680,7 +680,7 @@ public class ConfigurationTest extends WithApplication {
             verify(request, times(1)).getHeader(anyString());
             try {
                 verify(reposeServiceMock, never()).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
             }
@@ -709,7 +709,7 @@ public class ConfigurationTest extends WithApplication {
             try {
                 when(reposeServiceMock.setUpReposeEnvironment(any(), any(), anyString(), anyList())).
                         thenReturn(null);
-                when(configurationFactoryMock.translateConfigurations(any(), anyString(), any())).
+                when(configurationFactoryMock.translateConfigurationsFromUpload(any(), anyString(), any())).
                         thenReturn(new ArrayList<models.Configuration>());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
@@ -751,7 +751,7 @@ public class ConfigurationTest extends WithApplication {
             verify(request, times(1)).getHeader(anyString());
             try {
                 verify(reposeServiceMock).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(InternalServerException | NotFoundException ise){
                 fail(ise.getLocalizedMessage());
             }
@@ -777,7 +777,7 @@ public class ConfigurationTest extends WithApplication {
             when(userServiceMock.isValid(anyString())).thenReturn(true);
             when(userServiceMock.findByToken(anyString())).thenReturn(user);
             try {
-                when(configurationFactoryMock.translateConfigurations(any(), anyString(), any())).
+                when(configurationFactoryMock.translateConfigurationsFromUpload(any(), anyString(), any())).
                         thenReturn(new ArrayList<models.Configuration>());
                 when(reposeServiceMock.setUpReposeEnvironment(any(), any(), anyString(), anyList()))
                         .thenThrow(new InternalServerException("all the things!"));
@@ -821,7 +821,7 @@ public class ConfigurationTest extends WithApplication {
             verify(request, times(1)).getHeader(anyString());
             try {
                 verify(reposeServiceMock).setUpReposeEnvironment(any(), any(), anyString(), anyList());
-                verify(configurationFactoryMock).translateConfigurations(any(), anyString(), any());
+                verify(configurationFactoryMock).translateConfigurationsFromUpload(any(), anyString(), any());
             }catch(NotFoundException | InternalServerException ise){
                 fail(ise.getLocalizedMessage());
             }

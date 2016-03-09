@@ -1,5 +1,6 @@
 package factories;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.inject.ImplementedBy;
 import exceptions.InternalServerException;
 import exceptions.NotFoundException;
@@ -16,7 +17,10 @@ import java.util.Set;
 @ImplementedBy(ConfigurationFactoryImpl.class)
 public interface ConfigurationFactory {
 
-    List<Configuration> translateConfigurations(User user, String reposeVersion, Http.MultipartFormData body)
+    List<Configuration> translateConfigurationsFromUpload(User user, String reposeVersion, Http.MultipartFormData body)
+            throws NotFoundException, InternalServerException;
+
+    List<Configuration> translateConfigurationsFromJson(User user, String reposeVersion, JsonNode body)
             throws NotFoundException, InternalServerException;
 
     String updateSystemModelXml(User user, String versionId, String systemModelContent)

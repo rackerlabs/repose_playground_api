@@ -103,6 +103,13 @@ public class ComponentFactoryImpl implements ComponentFactory{
         Logger.debug("Add the name for " + elementName);
         addToJsonObject(jsonNode, "name", elementName);
 
+        if(element.getAttributes().getNamedItem("maxOccurs") != null &&
+                element.getAttributes().getNamedItem("maxOccurs").getTextContent().equals("1")) {
+            Logger.debug("Found maxOccurs and it's set to 1.  Add it as entry.");
+            addToJsonObject(jsonNode, "type", "entry");
+
+        }
+
         if(element.getAttributes().getNamedItem("type") != null){
             String elementType = element.getAttributes().getNamedItem("type").getTextContent();
             Logger.debug("We have a type for " + elementName + " and it's " + elementType);
@@ -115,21 +122,37 @@ public class ComponentFactoryImpl implements ComponentFactory{
                 Node child = retrieveChild(elementType, document);
 
                 if(child != null && child.getNodeName().contains("complexType")){
+                    Logger.debug("TODO: figure out if this is a list type or entry");
                     Logger.debug("It's a complex type.  Create new array.");
                     ArrayNode jsonArray = jsonNode.arrayNode();
                     addToJsonObject(jsonNode, "items", jsonArray);
                     Logger.debug("Parse the complex type child element");
                     parseComplexType(jsonNode, jsonArray, document, child);
                 } else {
+                    addToJsonObject(jsonNode, "xsd-type", "text");
                     Logger.debug("It's a simple type");
                     parseSimpleType(jsonNode, document, child);
                 }
 
             } else {
                 Logger.debug(itemType + " is native.  Add it.");
-                addToJsonObject(jsonNode, "type", itemType);
+                Logger.debug("check if it's a list and add it as such instead of adding it directly");
+                if(jsonNode.get("type") != null && jsonNode.get("type").asText().equals("list")){
+                    ArrayNode jsonArray = jsonNode.arrayNode();
+                    addToJsonObject(jsonNode, "items", jsonArray);
+                    Logger.debug("add as list");
+                    ObjectNode innerJsonNode = jsonNode.objectNode();
+                    addToJsonObject(innerJsonNode, "name", "value");
+                    addToJsonObject(innerJsonNode, "xsd-type", "text");
+                    addToJsonObject(innerJsonNode, "type", itemType);
+                    jsonArray.add(innerJsonNode);
+                } else {
+                    addToJsonObject(jsonNode, "type", itemType);
+                    addToJsonObject(jsonNode, "xsd-type", "text");
+                }
             }
         }
+
 
         for(int attr = 0; attr < element.getAttributes().getLength(); attr++){
             if(attributeElements.contains(element.getAttributes().item(attr).getNodeName())){
@@ -154,6 +177,19 @@ public class ComponentFactoryImpl implements ComponentFactory{
                     break;
                 case "#text":
                     Logger.warn("We found text! For now ignore");
+                    break;
+                case "complexType":
+                    Logger.debug("child is " + element.getChildNodes().item(childNode).getNodeName());
+                    Logger.debug("It's a complex type");
+                    ArrayNode innerJsonArray = jsonNode.arrayNode();
+                    Logger.debug("Retrieve the child element");
+                    parseComplexType(jsonNode, innerJsonArray, document, element.getChildNodes().item(childNode));
+                    jsonNode.putArray("items").addAll(innerJsonArray);
+                    break;
+                case "simpleType":
+                    addToJsonObject(jsonNode, "xsd-type", "text");
+                    Logger.debug("It's a simple type");
+                    parseSimpleType(jsonNode, document, element.getChildNodes().item(childNode));
                     break;
                 default:
                     Logger.error("We found another nested element.  Fix the thing!");
@@ -224,22 +260,37 @@ public class ComponentFactoryImpl implements ComponentFactory{
                     ObjectNode jsonObject = jsonArray.objectNode();
                     updateAttribute(element.getChildNodes().item(childNode), jsonObject, document);
                     jsonArray.add(jsonObject);
+                    break;
                 case "simpleContent":
                     Logger.debug("Simple content.  Add everything");
                     updateSimpleContent(element.getChildNodes().item(childNode), jsonArray, document);
                     break;
+                case "complexContent":
+                    Logger.debug("Complex content. Add everything");
+
+                    //get array
+                    updateComplexContent(parentJsonNode, element.getChildNodes().item(childNode),
+                            jsonArray, document);
+                    break;
                 case "choice":
                     Logger.debug("Choice.  Radio buttons ftw!");
                     updateChoice(element.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "assert":
+                    Logger.debug("Assert.  Let's add a rule for our selection");
+                    updateAssert(element.getChildNodes().item(childNode), parentJsonNode);
+                    break;
+                case "#text":
+                    Logger.debug("Ignore #text");
+                    break;
                 default:
                     Logger.warn("We didn't match the complex type! " + nodeName + " TODO for later.");
                     break;
             }
         }
-        Logger.info(element.getChildNodes().getLength() + "");
-        Logger.info(element.getNodeName());
-        Logger.info(element.getAttributes().getNamedItem("name").getTextContent());
-
+        Logger.debug(element.getChildNodes().getLength() + "");
+        Logger.debug(element.getNodeName());
+        //Logger.debug(element.getAttributes().getNamedItem("name").getTextContent());
 
     }
 
@@ -269,6 +320,26 @@ public class ComponentFactoryImpl implements ComponentFactory{
         }
     }
 
+    private void updateAssert(Node node, ObjectNode jsonNode){
+        Logger.debug("Let's update assert for " + node.getTextContent());
+        ArrayNode assertNodes;
+        if(jsonNode.get("assert") == null)
+            assertNodes = jsonNode.arrayNode();
+        else
+            assertNodes = (ArrayNode)jsonNode.get("assert");
+        ObjectNode assertNode = jsonNode.objectNode();
+        for(int i = 0; i < node.getAttributes().getLength(); i ++) {
+            if (node.getAttributes().item(i).getNodeName().contains("message") && assertNode.get("message") == null) {
+                assertNode.put("message", node.getAttributes().item(i).getTextContent());
+            }
+            if (node.getAttributes().item(i).getNodeName().equals("test")) {
+                assertNode.put("formula", node.getAttributes().item(i).getTextContent());
+            }
+        }
+        assertNodes.add(assertNode);
+        jsonNode.putArray("assert").addAll(assertNodes);
+    }
+
     private void updateAnnotation(Node node, ObjectNode jsonNode){
         Logger.debug("Let's update the docs for " + node.getTextContent());
         String doc = "";
@@ -279,6 +350,21 @@ public class ComponentFactoryImpl implements ComponentFactory{
                     if("html:p".equals(node.getChildNodes().item(l).getChildNodes().item(m).getNodeName())) {
                         doc = doc.concat(node.getChildNodes().item(l).getChildNodes().item(m).getTextContent());
 
+                    }
+                    if("html:ul".equals(node.getChildNodes().item(l).getChildNodes().item(m).getNodeName())) {
+                        doc = doc.concat("\n");
+                        for(int n = 0;
+                            n < node.getChildNodes().item(l).getChildNodes().item(m).getChildNodes().getLength();
+                                n ++){
+                            if("html:li".equals(
+                                    node.getChildNodes().item(l).getChildNodes().item(m).
+                                            getChildNodes().item(n).getNodeName())) {
+                                doc = doc.concat(" - " + node.getChildNodes().item(l).getChildNodes().item(m).
+                                        getChildNodes().item(n).getTextContent() + "\n");
+
+                            }
+                        }
+                        doc = doc.concat("\n");
                     }
                 }
             } else {
@@ -304,7 +390,7 @@ public class ComponentFactoryImpl implements ComponentFactory{
                 Logger.debug("child is " + child.getNodeName());
                 Logger.debug("It's a complex type");
                 ArrayNode innerJsonArray = jsonObject.arrayNode();
-                addToJsonObject(jsonObject, "items", innerJsonArray);
+                jsonObject.putArray("items").addAll(innerJsonArray);
                 Logger.info("Retrieve the child element");
                 parseComplexType(jsonObject, innerJsonArray, document, child);
             } else {
@@ -322,15 +408,16 @@ public class ComponentFactoryImpl implements ComponentFactory{
         NodeList allNodeList = node.getChildNodes();
         Logger.debug("Children count " + allNodeList.getLength());
         for(int l = 0; l < allNodeList.getLength(); l ++){
-            if(allNodeList.item(l).getNodeName().contains("element")){
+            if(allNodeList.item(l).getNodeName().contains("element")) {
                 ObjectNode jsonObject = jsonArray.objectNode();
                 Logger.debug("Check if minOccurs attribute exists.  By default it's 1");
-                if(allNodeList.item(l).hasAttributes() &&
-                        allNodeList.item(l).getAttributes().getNamedItem("minOccurs") != null){
+                if (allNodeList.item(l).hasAttributes() &&
+                        allNodeList.item(l).getAttributes().getNamedItem("minOccurs") != null) {
                     Logger.debug("Found minOccurs.  Add it.");
                     addToJsonObject(jsonObject, "minOccurs",
                             allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent());
-                    if(allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent().equals("1")){
+                    addToJsonObject(jsonObject, "type", "entry");
+                    if (allNodeList.item(l).getAttributes().getNamedItem("minOccurs").getTextContent().equals("1")) {
                         Logger.debug("Found minOccurs and it's set to 1.  Means it's required.  Add it.");
                         addToJsonObject(jsonObject, "required", "required");
                     } else {
@@ -347,6 +434,8 @@ public class ComponentFactoryImpl implements ComponentFactory{
                 parseElement(jsonObject, document, allNodeList.item(l));
                 Logger.debug("Add " + allNodeList.item(l) + " to list.");
                 jsonArray.add(jsonObject);
+            } else if(allNodeList.item(l).getNodeName().equals("#text")){
+                Logger.debug("Ignore #text");
             } else {
                 Logger.warn("Not an element. " + allNodeList.item(l).getNodeName() + " Probably needs to be a TODO");
             }
@@ -472,6 +561,64 @@ public class ComponentFactoryImpl implements ComponentFactory{
         }
     }
 
+    private void updateComplexContent(ObjectNode parentJsonNode,
+                                      Node node, ArrayNode jsonArray, Document document){
+        Logger.debug("Iterate through children of complex content");
+        for(int childNode = 0; childNode < node.getChildNodes().getLength(); childNode++){
+            String elementType = node.getChildNodes().item(childNode).getNodeName();
+            String[] elementTypeTokens = elementType.split(":");
+            String itemType = elementTypeTokens.length > 1 ? elementTypeTokens[1] : elementTypeTokens[0];
+            switch(itemType){
+                case "all":
+                    Logger.debug("We found a set of elements. Yay!");
+                    updateAll(node.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "sequence":
+                    Logger.debug("We found a list of elements. Yay!");
+                    updateSequence(node.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "annotation":
+                    Logger.debug("We found docs!  Always good!");
+                    updateAnnotation(node.getChildNodes().item(childNode), parentJsonNode);
+                    break;
+                case "simpleContent":
+                    Logger.debug("Simple content.  Add everything");
+                    updateSimpleContent(node.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "complexContent":
+                    Logger.error("Complex content. Add everythong");
+                    break;
+                case "choice":
+                    Logger.debug("Choice.  Radio buttons ftw!");
+                    updateChoice(node.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "assert":
+                    Logger.debug("Assert.  Let's add a rule for our selection");
+                    updateAssert(node.getChildNodes().item(childNode), parentJsonNode);
+                    break;
+                case "#text":
+                    Logger.debug("Ignore #text");
+                    break;
+                case "extension":
+                    Logger.debug("We got an extension.  Update extension");
+                    updateExtension(node.getChildNodes().item(childNode), jsonArray, document);
+                    break;
+                case "attribute":
+                    Logger.debug("We got an attribute. Update attribute");
+                    ObjectNode jsonObject = jsonArray.objectNode();
+                    updateAttribute(node.getChildNodes().item(childNode), jsonObject, document);
+                    jsonArray.add(jsonObject);
+                    break;
+                default:
+                    Logger.warn("figure out what's missing" + itemType);
+            }
+            if(node.getChildNodes().item(childNode).getNodeName().contains("extension")){
+            }
+            if(node.getChildNodes().item(childNode).getNodeName().contains("attribute")){
+            }
+        }
+    }
+
     /***
      * load the base element as well as all other elements with it
      * @param node
@@ -491,11 +638,12 @@ public class ComponentFactoryImpl implements ComponentFactory{
             Logger.debug("child is " + child.getNodeName());
             ObjectNode jsonObject = jsonArray.objectNode();
             if(child != null && child.getNodeName().contains("complexType")) {
-                Logger.info("It's a complex type");
-                ArrayNode innerJsonArray = jsonArray.arrayNode();
-                addToJsonObject(jsonObject, "items", innerJsonArray);
-                Logger.info("Retrieve the child element");
-                parseComplexType(jsonObject, innerJsonArray, document, child);
+                Logger.debug("It's a complex type.  For now, don't create a new item");
+                //ArrayNode innerJsonArray = jsonArray.arrayNode();
+                //addToJsonObject(jsonObject, "items", innerJsonArray);
+                //Logger.info("Retrieve the child element");
+                parseComplexType(jsonObject, jsonArray, document, child);
+                //jsonArray.add(jsonObject);
             } else {
                 addToJsonObject(jsonObject, "name", "value");
                 addToJsonObject(jsonObject, "xsd-type", "text");

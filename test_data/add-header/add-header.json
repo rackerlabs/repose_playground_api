@@ -1,26 +1,23 @@
 {
   "name": "add-headers",
-  "doc": "The root configuration for the Repose IP Classification filter configuration file.",
   "assert": [
     {
-      "formula": "count(*)>=1", //at least one item to be defined
+      "formula": "count(*)>=1",
       "message": "At least one header must be defined."
     }
   ],
   "items": [
     {
-      "name": "request",
-      "required": "optional",
-      "minOccurs": 0,
+      "minOccurs": "0",
       "type": "entry",
+      "required": "optional",
+      "name": "request",
       "items": [
         {
-          "doc": "Add Header can be used to add a new header with specific value to a request chain. Optionally you can remove the old header, which is left in by default. Values are limited to 4096 characters.",
-          "minOccurs": 1,
-          "maxOccurs": "unbounded",
           "required": "required",
-          "name": "header",
+          "minOccurs": "1",
           "type": "list",
+          "name": "header",
           "items": [
             {
               "name": "value",
@@ -51,23 +48,23 @@
               "required": "optional",
               "doc": "\n                                Quality assigned to users found in the request headers.\n                                If no quality is set, Repose will default this value to 0.1\n                            \n                                Quality factors are defined in the\n                                HTTP RFC -\n                                    Section-3.9\n                                \n                                (for usage examples, seeHTTP RFC - Section\n                                14.1)\n                                as a mechanism for weighting values in multi-value headers.\n                                Possible values for quality are 0 to 1.0.\n                            "
             }
-          ]
+          ],
+          "doc": "Add Header can be used to add a new header with specific value to a request chain.Optionally you can remove the old header, which is left in by default.Values are limited to 4096 characters.",
+          "maxOccurs": "unbounded"
         }
       ]
     },
     {
-      "name": "response",
-      "required": "optional",
-      "minOccurs": 0,
+      "minOccurs": "0",
       "type": "entry",
+      "required": "optional",
+      "name": "response",
       "items": [
         {
-          "doc": "Add Header can be used to add a new header with specific value to a request chain. Optionally you can remove the old header, which is left in by default. Values are limited to 4096 characters.",
-          "minOccurs": 1,
-          "maxOccurs": "unbounded",
           "required": "required",
-          "name": "header",
+          "minOccurs": "1",
           "type": "list",
+          "name": "header",
           "items": [
             {
               "name": "value",
@@ -98,7 +95,9 @@
               "required": "optional",
               "doc": "\n                                Quality assigned to users found in the request headers.\n                                If no quality is set, Repose will default this value to 0.1\n                            \n                                Quality factors are defined in the\n                                HTTP RFC -\n                                    Section-3.9\n                                \n                                (for usage examples, seeHTTP RFC - Section\n                                14.1)\n                                as a mechanism for weighting values in multi-value headers.\n                                Possible values for quality are 0 to 1.0.\n                            "
             }
-          ]
+          ],
+          "doc": "Add Header can be used to add a new header with specific value to a request chain.Optionally you can remove the old header, which is left in by default.Values are limited to 4096 characters.",
+          "maxOccurs": "unbounded"
         }
       ]
     }

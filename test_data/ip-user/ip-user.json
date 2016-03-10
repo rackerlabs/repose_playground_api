@@ -1,83 +1,92 @@
 {
   "name": "ip-user",
-  "doc": "The root configuration for the Repose IP Classification filter configuration file.",
   "items": [
     {
+      "required": "optional",
+      "minOccurs": "0",
       "name": "user-header",
-      "required": "optional",
-      "maxOccurs": 1,
-      "minOccurs": 0,
-      "type": "entry",
       "items": [
         {
           "xsd-type": "attribute",
-          "name": "x-pp-user",
-          "type": "string",
+          "default": "0.4",
+          "name": "quality",
+          "type": "double",
+          "minInclusive": "0.0",
+          "maxInclusive": "1.0",
           "required": "optional",
-          "doc": "The header name to be used."
+          "doc": "The quality associated with this header value."
         },
         {
           "xsd-type": "attribute",
-          "name": "quality",
-          "type": "double",
-          "minInclusive": 0.0,
-          "maxInclusive": 1.0,
+          "default": "x-pp-user",
+          "name": "name",
+          "type": "string",
           "required": "optional",
-          "doc": "The quality associated with this header value.",
-          "default": 0.4
+          "doc": "The header name to be used."
         }
-      ]
+      ],
+      "type": "entry",
+      "maxOccurs": "1"
     },
     {
+      "required": "optional",
+      "minOccurs": "0",
       "name": "group-header",
-      "required": "optional",
-      "maxOccurs": 1,
-      "minOccurs": 0,
-      "type": "entry",
       "items": [
         {
           "xsd-type": "attribute",
-          "name": "x-pp-groups",
-          "type": "string",
+          "default": "0.4",
+          "name": "quality",
+          "type": "double",
+          "minInclusive": "0.0",
+          "maxInclusive": "1.0",
           "required": "optional",
-          "doc": "The header name to be used."
+          "doc": "The quality associated with this header value."
         },
         {
           "xsd-type": "attribute",
-          "name": "quality",
-          "type": "double",
-          "minInclusive": 0.0,
-          "maxInclusive": 1.0,
+          "default": "x-pp-groups",
+          "name": "name",
+          "type": "string",
           "required": "optional",
-          "doc": "The quality associated with this header value.",
-          "default": 0.4
+          "doc": "The header name to be used."
         }
-      ]
+      ],
+      "type": "entry",
+      "maxOccurs": "1"
     },
     {
-      "name": "group",
       "required": "required",
-      "maxOccurs": "unbounded",
+      "minOccurs": "1",
       "type": "list",
-      "minOccurs": 1,
-      "doc": "A list of Classless Inter-Domain Routing (CIDR) addresses.",
+      "name": "group",
       "items": [
+        {
+          "required": "required",
+          "minOccurs": "1",
+          "type": "list",
+          "name": "cidr-ip",
+          "items": [
+            {
+              "name": "value",
+              "xsd-type": "text",
+              "type": "string"
+            }
+          ],
+          "maxOccurs": "unbounded",
+          "doc": "The Classless Inter-Domain Routing (CIDR) expression to match against.                            See: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing"
+        },
         {
           "xsd-type": "attribute",
           "name": "name",
           "type": "string",
           "required": "required",
           "doc": "The name to be placed in the named group header."
-        },
-        {
-          "name": "cidr-ip",
-          "xsd-type": "text",
-          "type": "string",
-          "minOccurs": 1,
-          "maxOccurs": "unbounded",
-          "doc": "The Classless Inter-Domain Routing (CIDR) expression to match against.                            See: https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing"
         }
-      ]
+      ],
+      "maxOccurs": "unbounded",
+      "doc": "A list of Classless Inter-Domain Routing (CIDR) addresses."
     }
-  ]
+  ],
+  "doc": "The root configuration for the Repose IP Classification filter configuration file."
 }

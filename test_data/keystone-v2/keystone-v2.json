@@ -1,0 +1,338 @@
+{
+  "name": "keystone-v2",
+  "items": [
+    {
+      "minOccurs": "1",
+      "type": "entry",
+      "required": "required",
+      "name": "identity-service",
+      "items": [
+        {
+          "xsd-type": "attribute",
+          "name": "username",
+          "type": "string",
+          "required": "optional",
+          "doc": "Admin username to access Rackspace Keystone V2 identity service."
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "password",
+          "type": "string",
+          "required": "optional",
+          "doc": "Admin user password to access Rackspace Keystone V2 identity service."
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "uri",
+          "type": "anyURI",
+          "required": "required",
+          "doc": "Rackspace Keystone v2 Identity Endpoint URI"
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "connection-pool-id",
+          "type": "string",
+          "required": "optional",
+          "doc": "Http Connection pool ID to use when talking to Rackspace Keystone V2 Identity"
+        },
+        {
+          "xsd-type": "attribute",
+          "default": "true",
+          "name": "set-roles-in-header",
+          "type": "boolean",
+          "required": "optional",
+          "doc": "Set the user's roles in the x-roles header"
+        },
+        {
+          "xsd-type": "attribute",
+          "default": "true",
+          "name": "set-groups-in-header",
+          "type": "boolean",
+          "required": "optional",
+          "doc": "Set the user's groups in the x-pp-groups header"
+        },
+        {
+          "xsd-type": "attribute",
+          "default": "false",
+          "name": "set-catalog-in-header",
+          "type": "boolean",
+          "required": "optional",
+          "doc": "Set the user's service catalog, base64 encoded in the X-Catalog header."
+        }
+      ],
+      "assert": [
+        {
+          "message": "Must provide both a username and a password",
+          "formula": "if (@username or @password) then (@username and @password) else true()"
+        }
+      ],
+      "maxOccurs": "1"
+    },
+    {
+      "minOccurs": "0",
+      "type": "entry",
+      "required": "optional",
+      "name": "delegating",
+      "items": [
+        {
+          "xsd-type": "attribute",
+          "default": "0.7",
+          "name": "quality",
+          "type": "double",
+          "minInclusive": "0",
+          "maxInclusive": "1.0",
+          "required": "optional",
+          "doc": "\n                        What quality you want any output headers to be.\n                        When setting up a chain of delegating filters the highest quality number will be the one that is\n                        eventually output.\n                        Default is 0.7\n                    "
+        }
+      ],
+      "doc": "\n                    If present, enables delegation. Delegation will cause this filter to pass requests it would\n                    ordinarily reject along with a header detailing why it would have rejected the request.\n                    If not present, delegation is not enabled, and there is no change in behavior.\n                ",
+      "maxOccurs": "1"
+    },
+    {
+      "minOccurs": "0",
+      "type": "entry",
+      "required": "optional",
+      "name": "white-list",
+      "items": [
+        {
+          "required": "required",
+          "minOccurs": "1",
+          "type": "list",
+          "name": "uri-regex",
+          "items": [
+            {
+              "name": "value",
+              "xsd-type": "text",
+              "type": "string"
+            }
+          ],
+          "maxOccurs": "unbounded"
+        }
+      ],
+      "doc": "List of URI Regular expression patterns to bypass authentication and authorization",
+      "maxOccurs": "1"
+    },
+    {
+      "minOccurs": "0",
+      "type": "entry",
+      "required": "optional",
+      "name": "cache",
+      "items": [
+        {
+          "required": "optional",
+          "minOccurs": "0",
+          "name": "timeouts",
+          "type": "entry",
+          "items": [
+            {
+              "minOccurs": "0",
+              "type": "int",
+              "required": "optional",
+              "name": "token",
+              "xsd-type": "text",
+              "minInclusive": "-1",
+              "default": "600",
+              "maxOccurs": "1"
+            },
+            {
+              "minOccurs": "0",
+              "type": "int",
+              "required": "optional",
+              "name": "group",
+              "xsd-type": "text",
+              "minInclusive": "-1",
+              "default": "600",
+              "maxOccurs": "1"
+            },
+            {
+              "minOccurs": "0",
+              "type": "int",
+              "required": "optional",
+              "name": "endpoints",
+              "xsd-type": "text",
+              "minInclusive": "-1",
+              "default": "600",
+              "maxOccurs": "1"
+            },
+            {
+              "xsd-type": "attribute",
+              "default": "0",
+              "name": "variability",
+              "type": "int",
+              "minInclusive": "0",
+              "required": "optional",
+              "doc": "\n                        This value will be added or subtracted to the cache timeouts to make sure that the cached items\n                        have some variability so they don't all expire at the exact same time. (Defaults to no\n                        variability)\n                    "
+            }
+          ],
+          "doc": "\n                    The number of seconds which cached data will live in the datastore. Different data is cached\n                    separately, so there are multiple configurable cache timeouts. Each timeout value behaves in the\n                    following way:\n                    If -1, caching is disabled.\n                    If 0, data is cached indefinitely. In other words, data is eternal.\n                    If greater than 0, data is cached for the value provided, in seconds.\n                ",
+          "maxOccurs": "1"
+        },
+        {
+          "required": "optional",
+          "minOccurs": "0",
+          "type": "list",
+          "name": "atom-feed",
+          "items": [
+            {
+              "xsd-type": "attribute",
+              "name": "id",
+              "type": "string",
+              "required": "required",
+              "doc": "The unique ID of a feed defined in the Atom Feed service configuration."
+            }
+          ],
+          "maxOccurs": "unbounded"
+        }
+      ],
+      "assert": [
+        {
+          "message": "Atom Feed ID's must be unique",
+          "formula": "count(kv2:atom-feed/@id) = count(distinct-values(kv2:atom-feed/@id))"
+        }
+      ],
+      "maxOccurs": "1"
+    },
+    {
+      "minOccurs": "0",
+      "type": "entry",
+      "required": "optional",
+      "name": "tenant-handling",
+      "items": [
+        {
+          "required": "optional",
+          "minOccurs": "0",
+          "name": "validate-tenant",
+          "type": "entry",
+          "items": [
+            {
+              "required": "required",
+              "minOccurs": "1",
+              "name": "uri-extraction-regex",
+              "type": "string",
+              "xsd-type": "text",
+              "maxOccurs": "1",
+              "doc": "\n                            Regular expression with a single matching group to extract the Tenant ID from the URI for\n                            validation.\n                        "
+            },
+            {
+              "xsd-type": "attribute",
+              "name": "strip-token-tenant-prefixes",
+              "type": "string",
+              "required": "optional",
+              "doc": "\n                        A '/' delimited list of prefixes to attempt to strip from the tenant id in the token\n                        response from the identity service. The post-strip tenant id is only used in the tenant\n                        validation check.\n                    "
+            }
+
+          ],
+          "maxOccurs": "1",
+          "doc": "\n                            If this element is included, tenant validation will be enforced based on the extraction URI.\n                        "
+        },
+        {
+          "required": "optional",
+          "minOccurs": "0",
+          "name": "send-tenant-id-quality",
+          "type": "entry",
+          "maxOccurs": "1",
+          "doc": "\n                            If this element is included, include Quality parameters on all the tenant ID headers sent,\n                            where the default tenant has the highest quality, followed by the one that matches the URI\n                            (if any), followed by the tenants from the roles.\n                        ",
+          "items": [
+            {
+              "xsd-type": "attribute",
+              "default": "0.9",
+              "name": "default-tenant-quality",
+              "type": "double",
+              "minInclusive":"0",
+              "maxInclusive":"1.0",
+              "required": "optional"
+            },
+            {
+              "xsd-type": "attribute",
+              "default": "0.7",
+              "name": "uri-tenant-quality",
+              "type": "double",
+              "minInclusive":"0",
+              "maxInclusive":"1.0",
+              "required": "optional"
+            },
+            {
+              "xsd-type": "attribute",
+              "default": "0.5",
+              "name": "roles-tenant-quality",
+              "type": "double",
+              "minInclusive":"0",
+              "maxInclusive":"1.0",
+              "required": "optional"
+            }
+          ]
+        },
+        {
+          "xsd-type": "attribute",
+          "default": "false",
+          "name": "send-all-tenant-ids",
+          "type": "boolean",
+          "required": "optional",
+          "doc": "Send all the tenant IDs from the user and the roles the user has"
+        }
+      ],
+      "maxOccurs": "1"
+    },
+    {
+      "minOccurs": "0",
+      "type": "entry",
+      "required": "optional",
+      "name": "require-service-endpoint",
+      "items": [
+        {
+          "xsd-type": "attribute",
+          "name": "public-url",
+          "type": "string",
+          "required": "required",
+          "doc": "\n                        Public URL to match on the user's service catalog entry\n                    "
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "region",
+          "type": "string",
+          "required": "optional",
+          "doc": "\n                        Region to match on the user's service catalog entry\n                    "
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "name",
+          "type": "string",
+          "required": "optional",
+          "doc": "\n                        Name of the service to match in the user's service catalog entry\n                    "
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "type",
+          "type": "string",
+          "required": "optional",
+          "doc": "\n                        Type to match in the user's service catalog entry\n                    "
+        }
+      ],
+      "maxOccurs": "1"
+    },
+    {
+      "minOccurs": "0",
+      "type": "entry",
+      "required": "optional",
+      "name": "pre-authorized-roles",
+      "items": [
+        {
+          "required": "required",
+          "minOccurs": "1",
+          "type": "list",
+          "name": "role",
+          "items": [
+            {
+              "name": "value",
+              "xsd-type": "text",
+              "type": "string"
+            }
+          ],
+          "maxOccurs": "unbounded"
+        }
+      ],
+      "maxOccurs": "1"
+    }
+  ],
+  "doc": "The root config type for the Rackspace Keystone V2 filter configuration file."
+}

@@ -78,11 +78,18 @@ public class ComponentClientImpl implements ComponentClient {
         String url = componentFactory.getBindingsUrl(versionId, componentId);
         return wsClient.url(url).get().map(
                 wsResponse -> {
-                    Document document = wsResponse.asXml();
-                    NodeList nodeList = document.getElementsByTagName("bindings");
-                    return getComponentXSD(versionId, componentId, nodeList.
-                            item(0).getAttributes().
-                            getNamedItem("schemaLocation").getTextContent());
+                    switch (wsResponse.getStatus()) {
+                        case 200:
+                            Document document = wsResponse.asXml();
+                            NodeList nodeList = document.getElementsByTagName("bindings");
+                            return getComponentXSD(versionId, componentId, nodeList.
+                                    item(0).getAttributes().
+                                    getNamedItem("schemaLocation").getTextContent());
+                        case 404:
+                            return null;
+                        default:
+                            throw new InternalServerException("Invalid status");
+                    }
 
                 }
         ).recover(

@@ -1,0 +1,30 @@
+{
+  "name": "destination-router",
+  "items": [
+    {
+      "required": "required",
+      "minOccurs": "1",
+      "name": "target",
+      "items": [
+        {
+          "xsd-type":"attribute",
+          "name": "id",
+          "type": "string",
+          "required": "required",
+          "doc": "Defines a destination id within the service domain."
+        },
+        {
+          "xsd-type": "attribute",
+          "name": "quality",
+          "type": "double",
+          "minInclusive": "0.0",
+          "maxInclusive": "1.0",
+          "doc":"Quality of this destination"
+        }
+      ],
+      "type": "entry",
+      "maxOccurs": "1"
+    }
+  ],
+  "doc": "\n                    Defines a collection of servlet context routing destinations and\n                    their associated quality factors.\n                "
+}

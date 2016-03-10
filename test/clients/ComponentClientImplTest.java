@@ -19,6 +19,7 @@ import java.util.List;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 import static play.mvc.Results.notFound;
@@ -248,9 +249,7 @@ public class ComponentClientImplTest {
         ComponentClientImpl componentClient = new ComponentClientImpl(componentFactory);
         componentClient.wsClient = ws;
 
-        exception.expect(InternalServerException.class);
-        exception.expectMessage("We are currently experiencing difficulties.  Please try again later.");
-        componentClient.getComponentXSD("1", "2");
+        assertNull(componentClient.getComponentXSD("1", "2"));
 
         verify(componentFactory, times(1)).getBindingsUrl(anyString(), anyString());
         verify(componentFactory, never()).getSchemaUrl(anyString(), anyString(), anyString());

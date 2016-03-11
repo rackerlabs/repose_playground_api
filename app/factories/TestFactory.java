@@ -17,4 +17,5 @@ public interface TestFactory {
 
     Map<String, ?> generateDebugMessageMap(List<String> httpDebugLogList);
 
+    String getTestUrl(String ip, String port, String uri);
 }

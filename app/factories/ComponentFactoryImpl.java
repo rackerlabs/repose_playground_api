@@ -3,11 +3,13 @@ package factories;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.inject.Inject;
 import exceptions.InternalServerException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import play.Logger;
+import repositories.FilterRepository;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +23,12 @@ public class ComponentFactoryImpl implements ComponentFactory{
 
     private final List<String> nativeElements = Arrays.asList("string", "double", "boolean", "anyURI");
     private final List<String> attributeElements = Arrays.asList("minOccurs", "maxOccurs", "use", "default");
+    private final FilterRepository filterRepository;
+
+    @Inject
+    public ComponentFactoryImpl(FilterRepository filterRepository){
+        this.filterRepository = filterRepository;
+    }
 
     @Override
     public String getBindingsUrl(String versionId, String componentId) {
@@ -85,8 +93,9 @@ public class ComponentFactoryImpl implements ComponentFactory{
             }
         }
 
-        //save the filter namespace
-        //Helpers.saveFilterNamespace(filterName, schema.getAttributes().getNamedItem("targetNamespace").getTextContent());
+        Logger.debug("save filter namespace for " + filterName);
+        filterRepository.saveFilterNamespace(
+                filterName, schema.getAttributes().getNamedItem("targetNamespace").getTextContent());
 
         return parentJson;
     }

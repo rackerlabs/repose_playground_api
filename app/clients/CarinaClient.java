@@ -110,53 +110,51 @@ public class CarinaClient implements ICarinaClient {
         Logger.error("Get cluster zip from " + carinaZipUrl + " for " + clusterName);
         return wsClient.url(carinaZipUrl)
                 .setHeader("x-auth-token", user.token)
-                .get().map(new F.Function<WSResponse, Cluster>() {
-                    public Cluster apply(WSResponse response) throws Throwable {
-                        Logger.debug("getClusterZip::response for " + user);
-                        Logger.debug("getClusterZip::body: " + response.getStatus() + " " + response.getBody());
-                        switch (response.getStatus()) {
-                            case 201:
-                                JsonNode zipResponse = response.asJson();
-                                return wsClient.url(
-                                        zipResponse.get("zip_url").asText().replace("\"", ""))
-                                        .setHeader("x-auth-token", user.token)
-                                        .setHeader("Accept", "application/zip")
-                                        .setHeader("Content-disposition", "attachment; filename=" + clusterName + ".zip")
-                                        .get().map(
-                                                new F.Function<WSResponse, Cluster>() {
-                                                    @Override
-                                                    public Cluster apply(WSResponse innerResponse) throws Throwable {
-                                                        Logger.debug("Response from zip call: " + innerResponse.getStatus());
-                                                        switch (innerResponse.getStatus()) {
-                                                            case 200:
-                                                                try {
-                                                                    return unzip(
-                                                                            innerResponse.getBodyAsStream(),
-                                                                            clusterName, user);
-                                                                } catch (InternalServerException | IOException e) {
-                                                                    e.printStackTrace();
-                                                                    Logger.error(e.getMessage());
-                                                                    throw new InternalServerException(e.getLocalizedMessage());
-                                                                }
-                                                            default:
-                                                                throw new InternalServerException("Could not retrieve cluster zip.");
-                                                        }
+                .get().map(response -> {
+                    Logger.debug("getClusterZip::response for " + user);
+                    Logger.debug("getClusterZip::body: " + response.getStatus() + " " + response.getBody());
+                    switch (response.getStatus()) {
+                        case 201:
+                            JsonNode zipResponse = response.asJson();
+                            return wsClient.url(
+                                    zipResponse.get("zip_url").asText().replace("\"", ""))
+                                    .setHeader("x-auth-token", user.token)
+                                    .setHeader("Accept", "application/zip")
+                                    .setHeader("Content-disposition", "attachment; filename=" + clusterName + ".zip")
+                                    .get().map(
+                                            new F.Function<WSResponse, Cluster>() {
+                                                @Override
+                                                public Cluster apply(WSResponse innerResponse) throws Throwable {
+                                                    Logger.debug("Response from zip call: " + innerResponse.getStatus());
+                                                    switch (innerResponse.getStatus()) {
+                                                        case 200:
+                                                            try {
+                                                                return unzip(
+                                                                        innerResponse.getBodyAsStream(),
+                                                                        clusterName, user);
+                                                            } catch (InternalServerException | IOException e) {
+                                                                e.printStackTrace();
+                                                                Logger.error(e.getMessage());
+                                                                throw new InternalServerException(e.getLocalizedMessage());
+                                                            }
+                                                        default:
+                                                            throw new InternalServerException("Could not retrieve cluster zip.");
                                                     }
                                                 }
-                                        ).recover(
-                                                new F.Function<Throwable, Cluster>() {
-                                                    //no cluster by this name exists.  Empty all the things
-                                                    @Override
-                                                    public Cluster apply(Throwable throwable) throws Throwable {
-                                                        throw throwable;
-                                                    }
+                                            }
+                                    ).recover(
+                                            new F.Function<Throwable, Cluster>() {
+                                                //no cluster by this name exists.  Empty all the things
+                                                @Override
+                                                public Cluster apply(Throwable throwable) throws Throwable {
+                                                    throw throwable;
                                                 }
-                                        ).get(30000);
-                            case 404:
-                                throw new NotFoundException("Cluster zip does not exist.");
-                            default:
-                                throw new InternalServerException("Could not retrieve cluster zip.");
-                        }
+                                            }
+                                    ).get(30000);
+                        case 404:
+                            throw new NotFoundException("Cluster zip does not exist.");
+                        default:
+                            throw new InternalServerException("Could not retrieve cluster zip.");
                     }
                 }).recover(
                         new F.Function<Throwable, Cluster>() {
@@ -175,19 +173,16 @@ public class CarinaClient implements ICarinaClient {
             throw new InternalServerException("Required parameters were not provided.");
         F.Promise<JsonNode> result = wsClient.url(clusterFactory.getCarinaClusterUrl(user.username, clusterName))
                 .setHeader("x-auth-token", user.token)
-                .get().map(new F.Function<WSResponse, JsonNode>() {
-                    @Override
-                    public JsonNode apply(WSResponse response) throws Throwable {
-                        Logger.debug("response for " + user);
-                        Logger.debug("body: " + response.getStatus() + " " + response.getBody());
-                        switch (response.getStatus()) {
-                            case 200:
-                                return response.asJson().get("status");
-                            case 404:
-                                throw new NotFoundException("Cluster not found.");
-                            default:
-                                throw new InternalServerException("Didn't expect that!");
-                        }
+                .get().map(response -> {
+                    Logger.debug("response for " + user);
+                    Logger.debug("body: " + response.getStatus() + " " + response.getBody());
+                    switch (response.getStatus()) {
+                        case 200:
+                            return response.asJson().get("status");
+                        case 404:
+                            throw new NotFoundException("Cluster not found.");
+                        default:
+                            throw new InternalServerException("Didn't expect that!");
                     }
                 }).recover(
                         new F.Function<Throwable, JsonNode>() {

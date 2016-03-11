@@ -47,11 +47,4 @@ public class Filter extends Model {
     public static final Finder<Long, Filter> find = new Finder<Long, Filter>(
             Long.class, Filter.class);
 
-    public static Filter findByName(String name) {
-        return find
-                .where()
-                .eq("name", name.toLowerCase())
-                .findUnique();
-    }
-
 }

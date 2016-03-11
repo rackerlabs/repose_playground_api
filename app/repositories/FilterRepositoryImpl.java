@@ -29,11 +29,10 @@ public class FilterRepositoryImpl implements FilterRepository {
     public void saveFilterNamespace(String filterName, String namespace) {
         Logger.debug("Save filter namespace: " + filterName + " and namespace " + namespace);
         Filter filter = findByName(filterName);
-        if(filter == null){
-            filter = new Filter();
-            filter.setName(filterName);
-        }
-        filter.setNamespace(namespace);
+        if(filter == null)
+            filter = new Filter(filterName, namespace);
+        else
+            filter.setNamespace(namespace);
         filter.save();
     }
 }

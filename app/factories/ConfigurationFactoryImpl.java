@@ -54,7 +54,7 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             throws NotFoundException, InternalServerException {
         Logger.debug("Translate configurations for " + user + ", version " + reposeVersion);
         try{
-            Integer.parseInt(reposeVersion);
+            Integer.parseInt(reposeVersion.split(Pattern.quote("."))[0]);
         } catch(NumberFormatException nfe) {
             throw new InternalServerException("Invalid version specified.");
         }
@@ -97,35 +97,26 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             throws NotFoundException, InternalServerException {
         Logger.debug("Translate configurations for " + user + ", version " + reposeVersion);
         try{
-            int majorVersion = Integer.parseInt(reposeVersion);
-
-
-            List<Configuration> filterXml = parseFilters(node);
-            for(Configuration configuration: filterXml){
-                switch (configuration.getName()) {
-                    case "system-model.cfg.xml":
-                        Logger.debug("generate system model");
-                        configuration.setXml(generateSystemModelXml(filterXml, majorVersion, user, reposeVersion));
-                        break;
-                    case "container.cfg.xml":
-                        Logger.debug("update container config");
-                        configuration.setXml(generateContainerXml(majorVersion));
-                        break;
-                    case "log4j2.xml":
-                    case "log4j.properties":
-                        Logger.debug("update logging config");
-                        configuration.setXml(generateLoggingXml(majorVersion));
-                        break;
-                    default:
-                        Logger.debug("configuration file " + configuration.getName() + " is ignored");
-                }
-            }
-
-            return  filterXml;
+            Integer.parseInt(reposeVersion.split(Pattern.quote("."))[0]);
         } catch(NumberFormatException nfe) {
             throw new InternalServerException("Invalid version specified.");
         }
 
+        int majorVersion = Integer.parseInt(reposeVersion.split(Pattern.quote("."))[0]);
+
+        List<Configuration> filterXml = parseFilters(node);
+        filterXml.add(new Configuration("system-model.cfg.xml",
+                generateSystemModelXml(filterXml, majorVersion, user, reposeVersion)));
+        filterXml.add(new Configuration("container.cfg.xml",
+                generateContainerXml(majorVersion)));
+        if(majorVersion < 7)
+            filterXml.add(new Configuration("log4j.properties",
+                    generateLoggingXml(majorVersion)));
+        else
+            filterXml.add(new Configuration("log4j2.xml",
+                    generateLoggingXml(majorVersion)));
+
+        return  filterXml;
     }
 
     @Override
@@ -602,6 +593,7 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
                     while (jsonNodeIterator.hasNext()) {
                         Document filterXml;
                         JsonNode jsonNode = jsonNodeIterator.next();
+                        Logger.debug("JSON ENTRY: " + jsonNode);
                         JsonNode name = jsonNode.get("filter");
                         Filter filter = filterRepository.findByName(name.textValue());
                         if (filter != null) {
@@ -613,7 +605,7 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
                                 filterXmlMap.put(filter.name + ".cfg.xml", filterXml);
                             }
                             //iterate through each token of the name and create an xml tree if one does not exist.
-                            Logger.info(jsonNode.get("name").asText());
+                            Logger.debug(jsonNode.get("name").asText());
                             String[] nameTokens = jsonNode.get("name").asText().split(Pattern.quote("."));
                             Iterator<String> nameIterator = Arrays.asList(nameTokens).iterator();
                             Element currentElement = filterXml.getDocumentElement();

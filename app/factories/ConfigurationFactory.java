@@ -9,7 +9,6 @@ import models.User;
 import play.mvc.Http;
 
 import java.util.List;
-import java.util.Set;
 
 /**
  * Created by dimi5963 on 3/2/16.
@@ -32,6 +31,7 @@ public interface ConfigurationFactory {
     String generateLoggingXml(int majorVersion)
             throws InternalServerException;
 
-    String generateSystemModelXml(Set<String> filterNames, int majorVersion, User user, String versionId)
-            throws InternalServerException;
+    String generateSystemModelXml(List<Configuration> filterNames,
+                                  int majorVersion, User user,
+                                  String versionId) throws InternalServerException;
 }

@@ -7,6 +7,7 @@ import org.apache.xerces.jaxp.DocumentBuilderFactoryImpl;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import play.libs.Json;
+import repositories.FilterRepository;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -14,11 +15,14 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 
 import static junit.framework.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
 
 /**
  * Created by dimi5963 on 3/9/16.
  */
 public class ComponentFactoryImplTest {
+
+    private FilterRepository filterRepository = mock(FilterRepository.class);
 
     @Test
     public void testGenerateJSONTreeAddHeader() throws Exception {
@@ -28,7 +32,7 @@ public class ComponentFactoryImplTest {
 
         ObjectNode parentJson = JsonNodeFactory.instance.objectNode();
         JsonNode addHeaderNode =
-                new ComponentFactoryImpl().generateJSONTree("add-header", parentJson, document);
+                new ComponentFactoryImpl(filterRepository).generateJSONTree("add-header", parentJson, document);
 
         InputStream io = Files.newInputStream(
                 Paths.get("test_data/add-header/add-header.json"), StandardOpenOption.READ);
@@ -44,7 +48,7 @@ public class ComponentFactoryImplTest {
 
         ObjectNode parentJson = JsonNodeFactory.instance.objectNode();
         JsonNode ipUserNode =
-                new ComponentFactoryImpl().generateJSONTree("ip-user", parentJson, document);
+                new ComponentFactoryImpl(filterRepository).generateJSONTree("ip-user", parentJson, document);
 
         InputStream io = Files.newInputStream(
                 Paths.get("test_data/ip-user/ip-user.json"), StandardOpenOption.READ);
@@ -61,7 +65,7 @@ public class ComponentFactoryImplTest {
 
         ObjectNode parentJson = JsonNodeFactory.instance.objectNode();
         JsonNode compression =
-                new ComponentFactoryImpl().generateJSONTree("compression", parentJson, document);
+                new ComponentFactoryImpl(filterRepository).generateJSONTree("compression", parentJson, document);
 
         InputStream io = Files.newInputStream(
                 Paths.get("test_data/compression/content-compression.json"), StandardOpenOption.READ);
@@ -78,7 +82,7 @@ public class ComponentFactoryImplTest {
 
         ObjectNode parentJson = JsonNodeFactory.instance.objectNode();
         JsonNode destinationRouter =
-                new ComponentFactoryImpl().generateJSONTree("destination-router", parentJson, document);
+                new ComponentFactoryImpl(filterRepository).generateJSONTree("destination-router", parentJson, document);
 
         InputStream io = Files.newInputStream(
                 Paths.get("test_data/destination-router/destination-router.json"), StandardOpenOption.READ);
@@ -95,7 +99,7 @@ public class ComponentFactoryImplTest {
 
         ObjectNode parentJson = JsonNodeFactory.instance.objectNode();
         JsonNode keytoneV2 =
-                new ComponentFactoryImpl().generateJSONTree("keystone-v2", parentJson, document);
+                new ComponentFactoryImpl(filterRepository).generateJSONTree("keystone-v2", parentJson, document);
 
         InputStream io = Files.newInputStream(
                 Paths.get("test_data/keystone-v2/keystone-v2.json"), StandardOpenOption.READ);

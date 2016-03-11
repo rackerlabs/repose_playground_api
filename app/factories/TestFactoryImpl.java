@@ -139,4 +139,11 @@ public class TestFactoryImpl implements TestFactory {
 
         return debugMessageMap;
     }
+
+    @Override
+    public String getTestUrl(String ip, String port, String uri) {
+        return "http://" + ip + ":" + port + uri;
+    }
+
+
 }

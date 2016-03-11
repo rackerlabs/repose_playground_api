@@ -11,6 +11,16 @@ import javax.persistence.Id;
  */
 @Entity
 public class Filter extends Model {
+
+    public Filter(String name){
+        this(name, null);
+    }
+
+    public Filter(String name, String namespace){
+        this.name = name;
+        this.namespace = namespace;
+    }
+
     @Id
     public Long id;
 
@@ -46,12 +56,5 @@ public class Filter extends Model {
 
     public static final Finder<Long, Filter> find = new Finder<Long, Filter>(
             Long.class, Filter.class);
-
-    public static Filter findByName(String name) {
-        return find
-                .where()
-                .eq("name", name.toLowerCase())
-                .findUnique();
-    }
 
 }

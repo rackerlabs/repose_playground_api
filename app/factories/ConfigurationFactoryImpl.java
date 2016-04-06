@@ -535,7 +535,8 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             Element filterElement = document.createElement("filter");
             //split out the name.cfg.xml and put in the name
             filterElement.setAttribute("name", filter.getName().split(Pattern.quote("."))[0]);
-            filterElement.setAttribute("configuration", filter.getName());
+            if(filter.getXml() != null)
+                filterElement.setAttribute("configuration", filter.getName());
             filters.appendChild(filterElement);
         }
 
@@ -550,6 +551,8 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
         endpoint.setAttribute("root-path", "/");
         endpoint.setAttribute("default", "true");
         destinations.appendChild(endpoint);
+
+        Logger.debug("Updated system model: " + xmlFactory.convertDocumentToString(document));
 
         return xmlFactory.convertDocumentToString(document);
     }
@@ -580,7 +583,9 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
     }
 
     private List<Configuration> parseFilters(JsonNode node) throws InternalServerException{
+        Logger.debug("Parse " + node);
         Map<String, Document> filterXmlMap = new HashMap<>();
+        int filterCounter = 1;
 
         if(node != null){
             //create new instance of doc factory
@@ -589,55 +594,71 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
             DocumentBuilder icBuilder;
             try {
                 if (node.isArray()) {
-                    Iterator<JsonNode> jsonNodeIterator = node.elements();
-                    while (jsonNodeIterator.hasNext()) {
-                        Document filterXml;
-                        JsonNode jsonNode = jsonNodeIterator.next();
-                        Logger.debug("JSON ENTRY: " + jsonNode);
-                        JsonNode name = jsonNode.get("filter");
-                        Filter filter = filterRepository.findByName(name.textValue());
-                        if (filter != null) {
-                            //does filter already set in the map
-                            filterXml = filterXmlMap.get(filter.name + ".cfg.xml");
-                            if (filterXml == null) {
-                                icBuilder = icFactory.newDocumentBuilder();
-                                filterXml = icBuilder.newDocument();
-                                filterXmlMap.put(filter.name + ".cfg.xml", filterXml);
-                            }
-                            //iterate through each token of the name and create an xml tree if one does not exist.
-                            Logger.debug(jsonNode.get("name").asText());
-                            String[] nameTokens = jsonNode.get("name").asText().split(Pattern.quote("."));
-                            Iterator<String> nameIterator = Arrays.asList(nameTokens).iterator();
-                            Element currentElement = filterXml.getDocumentElement();
-                            while(nameIterator.hasNext()){
-                                String nameToken = nameIterator.next();
-                                if(currentElement == filterXml.getDocumentElement()) {
-                                    //this is the root element
-                                    if(filterXml.getDocumentElement() == null) {
-                                        //this document is empty!  add a new one
-                                        Element rootElement = filterXml.createElementNS(filter.namespace, nameToken);
-                                        filterXml.appendChild(rootElement);
-                                        currentElement = rootElement;
-                                    } else if(!currentElement.getNodeName().equals(nameToken)){
-                                        //not root nameToken.  gotta add
-                                        currentElement = xmlFactory.insertElement(currentElement,
-                                                filterXml, nameToken,
-                                                jsonNode.get("value").asText(),
-                                                jsonNode.get("type").asText(),
-                                                !nameIterator.hasNext());
+                    //iterate through each filter
+                    Iterator<JsonNode> filterIterator = node.elements();
+                    while (filterIterator.hasNext()) {
+                        JsonNode filterNode = filterIterator.next();
+                        JsonNode specifiedDataNode = filterNode.get("specified_data");
+                        String filterName = filterNode.get("name").asText();
+                        if(specifiedDataNode != null && specifiedDataNode.isArray()){
+                            Iterator<JsonNode> jsonNodeIterator = specifiedDataNode.elements();
+                            while (jsonNodeIterator.hasNext()) {
+                                Document filterXml;
+                                JsonNode jsonNode = jsonNodeIterator.next();
+                                Logger.debug("JSON ENTRY: " + jsonNode);
+                                JsonNode name = jsonNode.get("filter");
+                                Filter filter = filterRepository.findByName(name.textValue());
+                                if (filter != null) {
+                                    //does filter already set in the map
+                                    filterXml = filterXmlMap.get(filter.name + "." + filterCounter + ".cfg.xml");
+                                    if (filterXml == null) {
+                                        icBuilder = icFactory.newDocumentBuilder();
+                                        filterXml = icBuilder.newDocument();
+                                        filterXmlMap.put(filter.name + "." + filterCounter + ".cfg.xml", filterXml);
                                     }
-                                } else {
-                                    currentElement = xmlFactory.insertElement(currentElement,
-                                            filterXml, nameToken,
-                                            jsonNode.get("value").asText(),
-                                            jsonNode.get("type").asText(),
-                                            !nameIterator.hasNext());
+                                    //iterate through each token of the name and create an xml tree if one does not exist.
+                                    Logger.debug(jsonNode.get("name").asText());
+                                    String[] nameTokens = jsonNode.get("name").asText().split(Pattern.quote("."));
+                                    Iterator<String> nameIterator = Arrays.asList(nameTokens).iterator();
+                                    Element currentElement = filterXml.getDocumentElement();
+                                    while(nameIterator.hasNext()){
+                                        String nameToken = nameIterator.next();
+                                        if(currentElement == filterXml.getDocumentElement()) {
+                                            //this is the root element
+                                            if(filterXml.getDocumentElement() == null) {
+                                                //this document is empty!  add a new one
+                                                Element rootElement = filterXml.createElementNS(
+                                                        filter.namespace, nameToken);
+                                                filterXml.appendChild(rootElement);
+                                                currentElement = rootElement;
+                                            } else if(!currentElement.getNodeName().equals(nameToken)){
+                                                //not root nameToken.  gotta add
+                                                currentElement = xmlFactory.insertElement(currentElement,
+                                                        filterXml, nameToken,
+                                                        jsonNode.get("value").asText(),
+                                                        jsonNode.get("type").asText(),
+                                                        !nameIterator.hasNext());
+                                            }
+                                        } else {
+                                            currentElement = xmlFactory.insertElement(currentElement,
+                                                    filterXml, nameToken,
+                                                    jsonNode.get("value").asText(),
+                                                    jsonNode.get("type").asText(),
+                                                    !nameIterator.hasNext());
+                                        }
+                                    }
                                 }
+
+                                Logger.debug("get the name :" + name);
+
                             }
+                        } else {
+                            //does not have an xml with it
+                            filterXmlMap.put(filterName + "." + filterCounter + ".cfg.xml", null);
                         }
 
-                        Logger.debug("get the name :" + name);
-
+                        //iterate the filter counter for xml name.
+                        filterCounter ++;
                     }
                 }
             } catch(ParserConfigurationException pce){
@@ -649,8 +670,12 @@ public class ConfigurationFactoryImpl implements ConfigurationFactory {
 
 
         List<Configuration> configurationList = new ArrayList<>();
-        filterXmlMap.forEach((name, doc) ->
-                        configurationList.add(new Configuration(name, xmlFactory.convertDocumentToString(doc)))
+        filterXmlMap.forEach((name, doc) -> {
+                    if(doc != null)
+                        configurationList.add(new Configuration(name, xmlFactory.convertDocumentToString(doc)));
+                    else
+                        configurationList.add(new Configuration(name, null));
+                }
         );
         return configurationList;
     }

@@ -425,12 +425,14 @@ public class SpotifyDockerClient implements IDockerClient {
         configurationList.forEach(
                 configuration -> {
                     try {
-                        File file = Paths.get(
-                                carinaFactory.getReposeConfigDirectory(user.tenant).toString(),
-                                configuration.getName()).toFile();
-                        FileWriter fileWriter = new FileWriter(file);
-                        fileWriter.write(configuration.getXml());
-                        fileWriter.close();
+                        if(configuration.getXml() != null) {
+                            File file = Paths.get(
+                                    carinaFactory.getReposeConfigDirectory(user.tenant).toString(),
+                                    configuration.getName()).toFile();
+                            FileWriter fileWriter = new FileWriter(file);
+                            fileWriter.write(configuration.getXml());
+                            fileWriter.close();
+                        }
                     } catch (IOException ioe) {
                         error("Unable to write " + configuration.getName());
                     }

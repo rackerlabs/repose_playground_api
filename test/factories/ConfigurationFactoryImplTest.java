@@ -173,6 +173,71 @@ public class ConfigurationFactoryImplTest {
         user.setUserid("1");
         user.setUsername("fake-user");
 
+        /*
+        [
+            {
+                "name":"destination-router",
+                "specified_data":[
+                    {
+                        "name":"destination-router.target.id",
+                        "value":"test1",
+                        "type":"string",
+                        "filter":"destination-router"
+                    },
+                    {
+                        "name":"destination-router.target.quality",
+                        "value":"0.1",
+                        "type":"double",
+                        "filter":"destination-router"
+                    }
+                ]
+            },
+            {
+                "name":"derp"
+            },
+            {
+                "name":"cors",
+                "specified_data":[
+                    {
+                        "name":"cross-origin-resource-sharing.allowed-origins.origin.regex[0]",
+                        "value":true,
+                        "type":"attribute",
+                        "filter":"cors"
+                    },
+                    {
+                        "name":"cross-origin-resource-sharing.allowed-methods.method.value[0]",
+                        "value":"test",
+                        "type":"text",
+                        "filter":"cors"
+                    },
+                    {
+                        "name":"cross-origin-resource-sharing.resources.resource.path[0]",
+                        "value":"test",
+                        "type":"attribute",
+                        "filter":"cors"
+                    }
+                ]
+            },
+            {
+                "name":"destination-router",
+                "specified_data":[
+                    {
+                        "name":"destination-router.target.id",
+                        "value":"ba",
+                        "type":"string",
+                        "filter":"destination-router"
+                    },
+                    {
+                        "name":"destination-router.target.quality",
+                        "value":"0.6",
+                        "type":"double",
+                        "filter":"destination-router"
+                    }
+                ]
+            }
+        ]
+        */
+
         ArrayNode requestNode = Json.newArray();
         ObjectNode filterNode = Json.newObject();
         filterNode.put("filter","add-header");

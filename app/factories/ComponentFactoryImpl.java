@@ -82,21 +82,23 @@ public class ComponentFactoryImpl implements ComponentFactory{
         //get children of current node
         Logger.debug("Generate JSON tree");
         Logger.debug("Figure out if current node has children and retrieve them.");
-        Node schema = document.getElementsByTagName("xs:schema").item(0);
-        NodeList schemaList = schema.getChildNodes();
-        for (int i = 0; i < schemaList.getLength(); i++) {
-            Logger.debug("Get schema child element");
-            if ("xs:element".equals(schemaList.item(i).getNodeName())) {
-                Logger.debug("This is the starting point of xsd.  Le'go! " + schemaList.item(i));
-                parseElement(parentJson, document, schemaList.item(i));
-                break;
+        if(document != null) {
+            Node schema = document.getElementsByTagName("xs:schema").item(0);
+            NodeList schemaList = schema.getChildNodes();
+            for (int i = 0; i < schemaList.getLength(); i++) {
+                Logger.debug("Get schema child element");
+                if ("xs:element".equals(schemaList.item(i).getNodeName())) {
+                    Logger.debug("This is the starting point of xsd.  Le'go! " + schemaList.item(i));
+                    parseElement(parentJson, document, schemaList.item(i));
+                    break;
+                }
             }
+
+            Logger.debug("save filter namespace for " + filterName);
+            filterRepository.saveFilterNamespace(
+                    filterName, schema.getAttributes().getNamedItem("targetNamespace").getTextContent());
+
         }
-
-        Logger.debug("save filter namespace for " + filterName);
-        filterRepository.saveFilterNamespace(
-                filterName, schema.getAttributes().getNamedItem("targetNamespace").getTextContent());
-
         return parentJson;
     }
 
@@ -313,7 +315,6 @@ public class ComponentFactoryImpl implements ComponentFactory{
                 case "list":
                     Logger.info("Oooh, we got a select button!  Yay!");
                     updateList(element.getChildNodes().item(childNode), jsonNode, document);
-                    addToJsonObject(jsonNode, "type", "multi-select");
                     break;
                 case "restriction":
                     Logger.info("We found a restriction. Yay!");
@@ -407,9 +408,11 @@ public class ComponentFactoryImpl implements ComponentFactory{
                 addToJsonObject(jsonObject, "xsd-type", "text");
                 parseSimpleType(jsonObject, document, child);
             }
-
-
+        } else {
+            Logger.info("The item type is native so let's add it as multi-select[element]");
+            addToJsonObject(jsonObject, "sub-type", itemType);
         }
+        addToJsonObject(jsonObject, "type", "multi-select");
     }
 
     private void updateAll(Node node, ArrayNode jsonArray, Document document){

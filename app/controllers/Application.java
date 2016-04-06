@@ -60,6 +60,11 @@ public class Application extends Controller {
         }
     }
 
+    /**
+     * Get filters and whether they have configurations
+     * @param id
+     * @return
+     */
     public Result componentsByVersion(String id) {
         Logger.debug("Version id " + id.split(Pattern.quote("."))[0]);
 

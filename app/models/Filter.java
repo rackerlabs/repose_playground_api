@@ -13,12 +13,15 @@ import javax.persistence.Id;
 public class Filter extends Model {
 
     public Filter(String name){
-        this(name, null);
+        this(name, null, false);
     }
 
-    public Filter(String name, String namespace){
+    public Filter(String name, boolean hasConfiguration) { this(name, null, hasConfiguration); }
+
+    public Filter(String name, String namespace, boolean hasConfiguration){
         this.name = name;
         this.namespace = namespace;
+        this.hasConfiguration = hasConfiguration;
     }
 
     @Id
@@ -29,6 +32,9 @@ public class Filter extends Model {
 
     @Column(length = 1496, nullable = false)
     public String name;
+
+    @Column(nullable = true)
+    public boolean hasConfiguration;
 
     public void setId(Long id) {
         this.id = id;
@@ -52,6 +58,10 @@ public class Filter extends Model {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public boolean isHasConfiguration(){
+        return this.hasConfiguration;
     }
 
     public static final Finder<Long, Filter> find = new Finder<Long, Filter>(

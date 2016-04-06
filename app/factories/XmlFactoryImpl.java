@@ -30,7 +30,7 @@ public class XmlFactoryImpl implements XmlFactory {
             transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
             StringWriter writer = new StringWriter();
             transformer.transform(new DOMSource(doc), new StreamResult(writer));
-            return writer.getBuffer().toString().replaceAll("\n|\r", "");
+            return writer.getBuffer().toString();//.replaceAll("\n|\r", "");
         }catch(TransformerException ex) {
             ex.printStackTrace();
         }

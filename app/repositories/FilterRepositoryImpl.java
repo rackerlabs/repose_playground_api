@@ -30,7 +30,7 @@ public class FilterRepositoryImpl implements FilterRepository {
         Logger.debug("Save filter namespace: " + filterName + " and namespace " + namespace);
         Filter filter = findByName(filterName);
         if(filter == null)
-            filter = new Filter(filterName, namespace);
+            filter = new Filter(filterName, namespace, true); //there is a configuration
         else
             filter.setNamespace(namespace);
         filter.save();

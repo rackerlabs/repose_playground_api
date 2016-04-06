@@ -35,6 +35,7 @@
           "xsd-type": "attribute",
           "name": "include-content-types",
           "type": "multi-select",
+          "sub-type":"string",
           "required": "optional",
           "doc": "if specified, this is treated as a space seperated list of content types\n                        (e.g. text/html,text/xml). The filter will attempt to only compress\n                        responses which specify one of these values as its content type, for example\n                        via ServletResponse.setContentType(String). Note that the filter does not\n                        know the response content type at the time it is applied, and so must apply\n                        itself and later attempt to disable compression when content type has been\n                        set. This will fail if the response has already been committed. Also note\n                        that this parameter cannot be specified if exclude-content-types is also\n                        configured.\n                    "
         },
@@ -42,6 +43,7 @@
           "xsd-type": "attribute",
           "name": "exclude-content-types",
           "type": "multi-select",
+          "sub-type":"string",
           "required": "optional",
           "doc": "same as above, but specifies a list of content types to not compress.\n                        Everything else will be compressed. However note that any content type that\n                        indicates a compressed format (e.g. application/gzip,\n                        application/x-compress) will not be compressed in any event.\n                    "
         },
@@ -49,6 +51,7 @@
           "xsd-type": "attribute",
           "name": "include-user-agent-patterns",
           "type": "multi-select",
+          "sub-type":"string",
           "required": "optional",
           "doc": "Only requests with User-Agent headers whose value matches one of these\n                        regular expressions will be compressed. Can't be specified if\n                        excludeUserAgentPatterns is also configured. This option is deprecated.\n                        Please refer to\n                        Java Regular Expression Api\n                        \n                        for more information on regular\n                        expression syntax.\n                    "
         },
@@ -56,6 +59,7 @@
           "xsd-type": "attribute",
           "name": "exclude-user-agent-patterns",
           "type": "multi-select",
+          "sub-type":"string",
           "required": "optional",
           "doc": "as above, requests whose User-Agent header matches one of these patterns\n                        will not be compressed. This option is deprecated. Please refer to\n                        Java Regular Expression Api\n                        \n                        for more information on regular\n                        expression syntax.\n                    "
         }

@@ -16,6 +16,7 @@ create table filter (
   id                        bigint not null,
   namespace                 varchar(1496) not null,
   name                      varchar(1496) not null,
+  has_configuration         boolean,
   constraint pk_filter primary key (id))
 ;
 
